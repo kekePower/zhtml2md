@@ -1,0 +1,7 @@
+text - 0:1 s0 l0 $'a'
+comment - 1:21 s0 l0 $''
+text - 21:22 s0 l0 $'b'
+declaration - 22:40 s0 l0 $''
+text - 40:41 s0 l0 $'c'
+declaration - 41:45 s0 l0 $''
+text - 45:46 s0 l0 $'y'

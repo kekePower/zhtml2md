@@ -1,0 +1,5 @@
+open div 1/0 0:5 d0 s0 l0 $''
+open em 2/1 5:9 d0 s0 l0 $''
+text - 0/2 9:10 d0 s0 l0 $'x'
+close em 2/1 10:10 d0 s1 l0 $''
+close div 1/0 10:10 d0 s1 l0 $''

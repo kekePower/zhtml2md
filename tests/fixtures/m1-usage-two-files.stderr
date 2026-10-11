@@ -1,0 +1,4 @@
+zhtml2md: usage: at most one input file may be given
+usage: zhtml2md [--strict] [--] [FILE|-]
+       zhtml2md --help
+       zhtml2md --version

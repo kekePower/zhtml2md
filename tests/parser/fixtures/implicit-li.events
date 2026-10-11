@@ -1,0 +1,8 @@
+open ul 1/0 0:4 d0 s0 l0 $''
+open li 2/1 4:8 d0 s0 l0 $''
+text - 0/2 8:9 d0 s0 l0 $'a'
+close li 2/1 9:9 d0 s1 l0 $''
+open li 3/1 9:13 d0 s0 l0 $''
+text - 0/3 13:14 d0 s0 l0 $'b'
+close li 3/1 14:19 d0 s0 l0 $''
+close ul 1/0 19:24 d0 s0 l0 $''

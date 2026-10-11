@@ -1,0 +1,6 @@
+start a 0:50 s1 l0 $''
+attr $'alt' 43 $'a"b'
+attr $'d' 30 $'one/two'
+attr $'href' 9 $'x>y<z'
+text - 50:51 s0 l0 $'T'
+end a 51:55 s0 l0 $''

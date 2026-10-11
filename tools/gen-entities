@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+# tools/gen-entities - regenerate data/entities.tsv from the upstream
+# WHATWG named character reference data. DEVELOPMENT-ONLY: requires
+# python3 and network access (or a previously downloaded JSON file).
+# The zhtml2md runtime never executes this; it reads the vendored TSV
+# as plain data.
+#
+# Usage:
+#   tools/gen-entities                 # download from the upstream URL
+#   tools/gen-entities entities.json   # use a local copy
+#
+# Verifies the upstream entry count and every decoded value before
+# writing. See data/README.md for the full provenance record.
+import hashlib
+import json
+import sys
+import urllib.request
+
+JSON_URL = "https://html.spec.whatwg.org/entities.json"
+EXPECTED_SEMICOLON_ENTRIES = 2125
+
+
+def main() -> int:
+    if len(sys.argv) > 2:
+        print(__doc__)
+        return 2
+    if len(sys.argv) == 2:
+        with open(sys.argv[1], "rb") as f:
+            raw = f.read()
+    else:
+        with urllib.request.urlopen(JSON_URL, timeout=30) as r:
+            raw = r.read()
+    print(f"sha256 {hashlib.sha256(raw).hexdigest()}  {len(raw)} bytes")
+
+    data = json.loads(raw.decode("utf-8"))
+    rows = []
+    for key, entry in data.items():
+        if not key.endswith(";"):
+            continue  # v1 requires the semicolon; legacy forms excluded
+        name = key[1:-1]
+        assert name.isalnum() and name.isascii(), name
+        cps = entry["codepoints"]
+        assert 1 <= len(cps) <= 2, key
+        for cp in cps:
+            assert 0 < cp <= 0x10FFFF, key
+            assert not 0xD800 <= cp <= 0xDFFF, key
+            # the JSON 'characters' field must match the codepoints
+            assert entry["characters"] == "".join(map(chr, cps)), key
+        rows.append((name, cps))
+
+    rows.sort()
+    if len(rows) != EXPECTED_SEMICOLON_ENTRIES:
+        print(f"entry count mismatch: {len(rows)} != "
+              f"{EXPECTED_SEMICOLON_ENTRIES}; update this tool and "
+              f"data/README.md deliberately")
+        return 1
+
+    out = []
+    for name, cps in rows:
+        fields = [name] + [f"{cp:X}" for cp in cps]
+        out.append("\t".join(fields))
+    text = "\n".join(out) + "\n"
+
+    path = "data/entities.tsv"
+    with open(path, "w", encoding="ascii", newline="\n") as f:
+        f.write(text)
+    print(f"wrote {path}: {len(rows)} entries, {len(text)} bytes")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

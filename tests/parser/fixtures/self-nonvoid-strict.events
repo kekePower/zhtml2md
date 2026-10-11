@@ -1,0 +1,6 @@
+open div 1/0 0:6 d0 s0 l0 $''
+text - 0/1 6:7 d0 s0 l0 $'x'
+close div 1/0 7:13 d0 s0 l0 $''
+open script 2/0 13:22 d1 s0 l0 $''
+close script 2/0 33:42 d1 s0 l0 $''
+text - 0/0 42:43 d0 s0 l0 $'y'

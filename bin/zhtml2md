@@ -1,0 +1,26 @@
+#!/usr/bin/env zsh
+# bin/zhtml2md - CLI wrapper for the zhtml2md library.
+#
+# Locates and sources the library relative to this script, forwards
+# arguments unchanged, and exits with the library's status. All
+# conversion behavior lives in the library.
+#
+# Parse-time protection: quoted command words cannot be rewritten by
+# aliases inherited from the environment; NO_ALIASES protects the rest
+# of this script's parse. See zhtml2md.zsh for the full rationale.
+
+
+'builtin' 'typeset' _zhtml2md_cli_loadopt=${options[aliases]:-off}
+'builtin' 'setopt' 'noaliases'
+
+'builtin' 'source' -- "${${${(%):-%N}:A}:h}/../zhtml2md.zsh" || {
+  'builtin' 'print' -r -u 2 -- 'zhtml2md: initialization: cannot load library'
+  'builtin' 'exit' 1
+}
+
+if [[ $_zhtml2md_cli_loadopt == on ]]; then
+  'builtin' 'setopt' 'aliases'
+fi
+'builtin' 'unset' _zhtml2md_cli_loadopt
+
+zhtml2md "$@"

@@ -1,0 +1,5 @@
+open script 1/0 0:8 d1 s0 l0 $''
+close script 1/0 30:40 d1 s0 l0 $''
+open style 2/0 40:47 d1 s0 l0 $''
+close style 2/0 51:59 d1 s0 l0 $''
+text - 0/0 59:60 d0 s0 l0 $'z'

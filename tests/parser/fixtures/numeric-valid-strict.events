@@ -1,0 +1,8 @@
+open ol 1/0 0:30 d0 s0 l0 $''
+attr $'reversed' $'no'
+attr $'start' $'-9'
+open li 2/1 30:48 d0 s0 l0 $''
+attr $'value' $'0'
+text - 0/2 48:49 d0 s0 l0 $'x'
+close li 2/1 49:54 d0 s0 l0 $''
+close ol 1/0 54:59 d0 s0 l0 $''

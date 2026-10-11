@@ -1,0 +1,7 @@
+open head 1/0 0:6 d1 s0 l0 $''
+open title 2/1 6:13 d1 s0 l0 $''
+close title 2/1 20:28 d1 s0 l0 $''
+close head 1/0 28:35 d1 s0 l0 $''
+open noscript 3/0 35:45 d0 s0 l0 $''
+text - 0/3 45:46 d0 s0 l0 $'x'
+close noscript 3/0 46:57 d0 s0 l0 $''

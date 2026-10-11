@@ -1,0 +1,3 @@
+open textarea 1/0 0:10 d0 s0 l0 $''
+text - 0/1 10:33 d0 s0 l0 $'\\n<b><&lt;</b>\\n'
+close textarea 1/0 33:44 d0 s0 l0 $''

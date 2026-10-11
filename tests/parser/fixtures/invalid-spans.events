@@ -1,0 +1,7 @@
+open table 1/0 0:7 d0 s0 l0 $''
+open tr 2/1 7:11 d0 s0 l0 $''
+open td 3/2 11:39 d0 s0 l0 $''
+text - 0/3 39:40 d0 s0 l0 $'x'
+close td 3/2 40:45 d0 s0 l0 $''
+close tr 2/1 45:50 d0 s0 l0 $''
+close table 1/0 50:58 d0 s0 l0 $''

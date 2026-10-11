@@ -1,0 +1,4 @@
+zhtml2md: usage: --help/--version cannot be combined with conversion arguments
+usage: zhtml2md [--strict] [--] [FILE|-]
+       zhtml2md --help
+       zhtml2md --version

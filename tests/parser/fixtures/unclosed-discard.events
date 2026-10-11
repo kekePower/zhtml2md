@@ -1,0 +1,2 @@
+open script 1/0 0:8 d1 s0 l0 $''
+close script 1/0 16:16 d1 s1 l0 $''

@@ -1,0 +1,7 @@
+open template 1/0 0:10 d1 s0 l0 $''
+open template 2/1 30:40 d1 s0 l0 $''
+open script 3/2 40:48 d1 s0 l0 $''
+close script 3/2 61:70 d1 s0 l0 $''
+close template 2/1 70:81 d1 s0 l0 $''
+close template 1/0 81:92 d1 s0 l0 $''
+text - 0/0 92:94 d0 s0 l0 $'ok'

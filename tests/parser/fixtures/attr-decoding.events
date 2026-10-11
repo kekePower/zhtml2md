@@ -1,0 +1,4 @@
+open a 1/0 0:30 d0 s0 l0 $''
+attr $'href' $'x&y'
+text - 0/1 30:38 d0 s0 l0 $'&lt;'
+close a 1/0 38:42 d0 s0 l0 $''

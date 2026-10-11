@@ -1,0 +1,8 @@
+text - 0/0 0:1 d0 s0 l0 $'a'
+void br 0/0 1:6 d0 s0 l0 $''
+text - 0/0 6:7 d0 s0 l0 $'b'
+void img 0/0 7:19 d0 s0 l0 $''
+attr $'src' $'x/'
+text - 0/0 19:20 d0 s0 l0 $'c'
+void wbr 0/0 20:25 d0 s0 l0 $''
+text - 0/0 25:26 d0 s0 l0 $'d'
