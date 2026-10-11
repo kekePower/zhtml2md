@@ -544,8 +544,10 @@ guides, CONTRIBUTING.md, retained Apache-2.0 LICENSE and upstream entity
 notices, installed-copy checks from a foreign cwd, and the acceptance review
 in docs/release-readiness.md. Parse checks and the mandatory offline suite
 pass on actual Zsh 5.8 and 5.9.2: 307 checks, zero failures each. The pinned
-GitHub Actions matrix is configured and checked locally; no hosted run is
-claimed, and no release publication or tag is part of this milestone.
+GitHub Actions matrix is configured and checked locally. Hosted upstream
+builds, mandatory suites and independent Markdown/runtime audits also pass
+on Ubuntu 24.04 for code commit bdafcf5; see the linked run in the acceptance
+review. No release publication or tag is part of this milestone.
 
 ## 11. Verification strategy
 

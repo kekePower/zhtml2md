@@ -368,5 +368,7 @@ The report distinguishes cold load, first conversion/entity initialization,
 20-run warm distributions, CLI startup and optional peak RSS. Optional token
 counts use a named tokenizer and separate cleanup from conversion. See
 docs/benchmarks.md and docs/release-readiness.md for the measured envelope and
-final acceptance review. The configured CI workflow has not been executed on
-the hosted runner as part of local verification.
+final acceptance review. The checksum-pinned upstream builds, mandatory
+suite, independent Markdown checks and process audits also passed the hosted
+Ubuntu 24.04 matrix for code commit bdafcf5; the run is linked from the
+acceptance review.

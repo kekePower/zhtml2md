@@ -33,6 +33,11 @@ passes five source/clean pairs on both.
 All seven 4 MiB corpus cases also match their independently authored expected
 Markdown on Zsh 5.8 with empty PATH and module_path.
 
+The [hosted verification](https://github.com/kekePower/zhtml2md/actions/runs/38115546245)
+also passed both checksum-pinned upstream builds on Ubuntu 24.04 for code
+commit `bdafcf5`: mandatory suite, independent Markdown and library/CLI process
+audits. The optional real-zoup check remains local; CI does not install zoup.
+
 The sourceable library is tested with no command or module lookup. Test setup,
 benchmark timers, source builds, strace, Python, independent Markdown and token
 checks are development tooling; they are not production dependencies.
@@ -50,8 +55,7 @@ No external executable processes or native modules do conversion work; the
 conversion loop creates no processes. The measured load cost is included in
 the report. No data or HTML is evaluated in those snapshots.
 
-Linux is verified. macOS is not claimed. The GitHub Actions workflow is
-configured and its YAML/shell steps are checked locally; a hosted workflow run
-has not been observed. zoup compatibility is pinned to the tested version.
+Linux is verified locally and on Ubuntu 24.04 in GitHub Actions. macOS is not
+claimed. zoup compatibility is pinned to the tested version.
 This remains a converter for its documented subset, with the documented
 recovery and fixed limits rather than browser-equivalent parsing.
