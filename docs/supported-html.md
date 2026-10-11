@@ -7,7 +7,7 @@ lands.
 
 ## Current implementation status
 
-Milestones 0-3 are complete. Implemented today:
+Milestones 0–4 are complete. Implemented today:
 
 - Input handling: UTF-8 validation with an optional initial BOM;
   rejection of NUL, invalid UTF-8, and C0/DEL control bytes other than
@@ -23,12 +23,10 @@ Milestones 0-3 are complete. Implemented today:
   text remains intact. Unknown inline elements unwrap without invented space.
 - Empty or whitespace-only input succeeds with zero output bytes.
 
-Nested list numbering, continuation indentation and hierarchy, plus simple
-and complex table representations, remain milestone 4. This development
-version retains their text with paragraph boundaries but does not preserve
-those relationships or span metadata in Markdown. Blockquote line prefixes
-are already used by the definition-list renderer; list/quote/table combinations
-still need milestone 4 verification.
+Nested lists preserve numbering and hierarchy, blockquotes prefix every
+line, and tables use either GFM pipes or a row/cell list that retains spans
+and child blocks. These representations are covered by milestone 4 fixtures.
+Hardening and release acceptance are recorded in docs/release-readiness.md.
 
 The decoder loads all 2,125 semicolon-terminated WHATWG names
 as validated literal data, including two-code-point values. Decimal and
@@ -48,7 +46,8 @@ Public conversion uses these rules for eligible text and attributes.
   source punctuation from becoming Markdown syntax. Generated markers and
   code use their own contexts; there is no final global escape pass.
 - Ampersands are escaped after one HTML entity pass, preserving literal
-  text such as `&copy;` produced by `&amp;copy;`. Code bypasses Markdown
+  text such as `&copy;` produced by `&amp;copy;`. In table-cell prose, an ampersand followed by an ASCII space may stay
+  literal because it cannot start an entity. Code bypasses Markdown
   entity expansion naturally.
 - Emphasis retains all child text. Empty captures emit no markers and move
   boundary spaces outside. ASCII word edges use markers; punctuation/Unicode
@@ -78,6 +77,43 @@ Public conversion uses these rules for eligible text and attributes.
   line with `> `. Details retain summary and body regardless of open state.
   Inputs preserve supplied textual values and explicit button values, omit
   hidden/password/non-text state, and invent no default button label.
+
+## Lists, quotes and tables
+
+Unordered items use `-`. Ordered items use their validated `start` and
+`value` numbers; `reversed` counts downward and defaults to the item count.
+Its presence activates reversal even when its value is `false`. Native
+ordered Markdown requires a nonnegative ascending-by-one sequence with at
+most nine digits. Other sequences use bullets with explicit escaped number
+labels, such as `- 3\. Text`. Subsequent items retain their actual number.
+Continuation lines use the marker's width; blank lines carry that indentation.
+A list with an item containing paragraph breaks uses blank lines between
+items. Empty items keep their bare marker. Quotes prefix all lines, including
+blank lines, and compose with nested lists, tables and code.
+
+A rectangular table with single-line inline cells and unit spans uses GFM
+pipes. An all-`th` first row becomes its header; otherwise an empty header is
+inserted and every source row remains data. Captions become paragraphs before
+the table, including a caption supplied after rows. An empty table emits only
+its caption. Pipes in prose, destinations and code receive their appropriate
+cell escapes; literal code backslashes survive.
+
+Spans, uneven widths, block content, hard breaks, multiline code and nested
+tables use a source-row/source-cell list. For example:
+
+```markdown
+1. Row 1
+
+   1. Header (rowspan=0, colspan=2): Name
+   2. Cell: Value
+```
+
+A block-bearing cell puts its content after the label on separate, indented
+lines. Each source cell appears once; no rectangular alignment is fabricated.
+Valid complex tables produce no recovery diagnostics. Text among table/row
+members is retained in source order using this fallback. A cell directly in a
+table becomes its own source row; a standalone cell retains its `Header` or
+`Cell` label and non-unit span metadata. No browser foster parenting occurs.
 
 ## Verified parser component
 
@@ -118,7 +154,7 @@ Public conversion uses these rules for eligible text and attributes.
   raw bodies and text remain governed by the input limit.
 - Code whitespace, CRLF and original byte offsets are preserved at the
   parser boundary. The renderer normalizes line endings without changing
-  diagnostic offsets. Numbering and table rendering remain milestone 4.
+  diagnostic offsets.
 
 Public rendering retains these verified deviations:
 

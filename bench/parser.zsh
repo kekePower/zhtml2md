@@ -19,7 +19,8 @@ local _zhtml2md_input='' _zhtml2md_in_path='' _zhtml2md_strict=0
 local -i _zhtml2md_bom=0 _zhtml2md_diag_emitted=0 _zhtml2md_diag_total=0 _zhtml2md_diag_capped=0
 local f
 local -F start elapsed
-local -i i median_idx=$(( (runs+1)/2 )) p95_idx=$(( (runs*95+99)/100 ))
+local -i i j median_idx=$(( (runs+1)/2 )) p95_idx=$(( (runs*95+99)/100 ))
+local sample
 local -a times=() sorted=()
 builtin print -r -- "parser-only warm probe: zsh $ZSH_VERSION / $OSTYPE; n=$runs; no Markdown sink"
 for f in "${files[@]}"; do
@@ -34,7 +35,16 @@ for f in "${files[@]}"; do
     (( elapsed = (EPOCHREALTIME-start) * 1000 ))
     times+=( $elapsed )
   done
-  sorted=( ${(on)times} )
+  sorted=( "${times[@]}" )
+  for (( i=2; i<=runs; ++i )); do
+    sample=$sorted[$i]
+    j=$(( i-1 ))
+    while (( j >= 1 && sample < sorted[j] )); do
+      sorted[j+1]=$sorted[$j]
+      (( --j ))
+    done
+    sorted[j+1]=$sample
+  done
   builtin printf '%s: %d bytes; median %.3f ms; p95 %.3f ms\n' \
     "${f:t}" ${#_zhtml2md_input} ${sorted[$median_idx]} ${sorted[$p95_idx]}
 done

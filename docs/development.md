@@ -3,12 +3,12 @@
 This file records the runtime mechanics established by milestone 0
 probing, the design decisions that follow from them, and the rules
 contributors must follow when changing the library. Everything here was
-verified empirically on Zsh 5.9.2 (x86_64-mageia-linux-gnu); re-verify
-before relying on it on other versions or platforms.
+verified on actual Zsh 5.8 and Zsh 5.9.2 binaries on Linux; re-verify
+before claiming another platform.
 
 ## Environment baseline
 
-- Minimum supported runtime: Zsh 5.9. Development host: Zsh 5.9.2 on
+- Minimum supported runtime: Zsh 5.8. Development host: Zsh 5.9.2 on
   Linux. No `zmodload` module and no external command may become a
   runtime dependency of loading or conversion.
 - All library code runs under `emulate -L zsh -o no_multibyte` with a
@@ -51,8 +51,10 @@ before relying on it on other versions or platforms.
   followed by disabling alias expansion for the rest of the parse:
 
   ```zsh
-  'builtin' 'typeset' _zhtml2md_X_loadopt=${options[aliases]:-off}
+  'builtin' 'typeset' _zhtml2md_X_loadopt="$( 'builtin' 'set' '+o' )"
   'builtin' 'setopt' 'noaliases'
+  # Inspect the saved option listing as literal data, then retain only
+  # whether it contains "set +o noaliases" (or "set -o aliases").
   ```
 
   The capture MUST come before `setopt noaliases`; reading the option
@@ -63,13 +65,17 @@ before relying on it on other versions or platforms.
   caller's ALIASES setting manually at its end, from a per-file
   uniquely-named capture parameter, and unsets it.
 - Verified hostile aliases on `local`, `integer`, `emulate`, `builtin`,
-  `typeset`, `print`, `printf`, `source`, and the library's own function
+  `typeset`, `print`, `printf`, `source`, `set`, `setopt`, `[[`, and the library's own function
   names do not affect loading or execution (tests/integration/loading.zsh).
 - RUNTIME HAZARD: zsh re-parses `$( )` command-substitution bodies when
   they execute, honoring aliases armed after the function was parsed.
-  Rule: production library code contains no command substitutions at all
-  (checked with `grep -n '\$(' zhtml2md.zsh bin lib`); keep it that way.
-  Test code quotes command words inside substitutions.
+  Production conversion functions contain no command substitutions.
+  Loading uses one quoted, builtin-only `set +o` snapshot per sourced file
+  to preserve ALIASES without loading `zsh/parameter`. These eight bounded
+  child processes (nine through the CLI) are measured by tools/audit-runtime;
+  conversion creates none. Keep other substitutions out of runtime code.
+  Test code quotes command words inside substitutions, and quotes literal
+  snapshot comparisons so alias definitions cannot become patterns.
 - Self-location: `${${(%):-%N}:A}` resolves the sourced file to an
   absolute path from any cwd, through relative or absolute source paths.
   When a script is found via PATH, `$0`/`%N` is already the resolved
@@ -104,8 +110,9 @@ before relying on it on other versions or platforms.
   a full 64 KiB window.
 - `${var%%$'\n'##}` (and likely other `##`-repeat trailing strips) is
   pathological: the OOM killer terminates the process around 500 KiB of
-  non-matching tail. Use `[[ $s =~ $'\n+$' ]]` (libc regex, linear) and
-  slice once with `MBEGIN`.
+  non-matching tail. Avoid unbounded suffix stripping; the renderer uses
+  bounded windows and delayed separators instead. Runtime `=~` would
+  implicitly require `zsh/regex`, so use native constant patterns.
 - `${var//[ $'\t\n']/}` class substitution is quadratic on large
   whitespace runs (OOM-killed at 4 MiB). Use a single `[[ ... ]]`
   pattern scan for membership questions.
@@ -126,9 +133,9 @@ walked sequentially so the window is not re-sliced per character.
 
 Known worst case: megabytes of dense non-ASCII text cost a few
 arithmetic operations per character and are much slower than ASCII.
-This is bounded and correct; the milestone 5 benchmark decides whether
-optimization is needed. Typical prose/markup (the benchmark family) is
-mostly ASCII.
+This is bounded and correct. The full milestone 5 benchmark in benchmarks.md
+includes entity-heavy Unicode output; typical prose/markup is mostly ASCII.
+It does not establish throughput for megabytes of dense non-ASCII input.
 
 ## Verification commands
 
@@ -136,8 +143,9 @@ mostly ASCII.
 zsh -df tests/gen-fixtures.zsh   # regenerate fixtures (review the diff!)
 zsh -df tests/gen-entity-fixtures.zsh # regenerate hand-authored entity cases
 zsh -df tests/gen-parser-fixtures.zsh # regenerate reviewed token/frame events
+zsh -df tests/gen-structure-fixtures.zsh # regenerate hand-authored list/table cases
 zsh -df tests/run.zsh            # parse checks + fixtures + integration
-zsh -df bench/run.zsh            # benchmark skeleton
+zsh -df bench/run.zsh 20         # complete conversion benchmark
 zsh -df bench/parser.zsh         # parser-only warm timing probe
 ```
 
@@ -155,13 +163,14 @@ docs/implementation-plan.md, never generated from implementation output.
 
 ## Current status
 
-Milestones 0-3 are complete. The public renderer consumes parser events
+Milestones 0–6 are complete; the local release candidate is 1.0.0-rc.1. The public renderer consumes parser events
 for prose, headings, links/images, emphasis, literal code, metadata discards,
 and textual form/definition fallbacks. ASCII prose whitespace collapses;
 code whitespace survives; nonempty output ends in exactly one LF.
-Milestone 4 still needs complete list numbering/hierarchy and table/span
-relationships. No v1 release or complete conversion performance claim
-follows from the current implementation.
+List numbering, hierarchy, quote composition and table/span relationships
+are implemented and covered by milestone 4 fixtures. Complete conversion
+measurements and their scope are recorded in benchmarks.md; publishing a
+release remains separate from local candidate validation.
 
 ## Entity component protocol
 
@@ -180,13 +189,13 @@ owned descriptor; repaired installations can retry. Sourcing and text
 without ampersands do not read the data.
 
 Numeric parsing validates digits before arithmetic, strips long leading
-zero runs with a C-level scan, and accumulates at most seven significant
+zero runs with the constant native pattern `(#b)(0#)(*)`, and accumulates at most seven significant
 digits before saturating above the Unicode range. UTF-8 encoding uses
 validated integer byte arithmetic and generated octal escapes with
 `printf -v '%b'`. That conversion requires `\0ooo`, not `\ooo`; exact-byte
-fixtures catch this distinction. Regex scratch parameters (`MATCH`,
-`MBEGIN`, `MEND`, `match`, `mbegin`, `mend`) are local to helpers so a
-caller using regex results does not lose them.
+fixtures catch this distinction. Pattern capture arrays (`match`, `mbegin`,
+`mend`) are local to helpers. Caller regex and pattern scratch remain intact;
+runtime matching does not use the module-backed `=~` operator.
 
 The decoder splits on `&` once, accounts decoded fragments against the
 capture limit, and joins once. All 2,125 named values have an independent
@@ -259,10 +268,16 @@ Leading/trailing block whitespace does not require a final Markdown regex
 sweep. Prose normalization/escaping and raw CRLF normalization use bounded
 4,096-byte windows; newline and backtick runs carry across window boundaries.
 Even unusually long fences use binary doubling of a literal backtick rather
-than global substitution over a multi-megabyte space run. Regex scratch
-parameters remain local. Code and destination contexts never pass through
+than global substitution over a multi-megabyte space run. Native pattern
+capture parameters remain local. Code and destination contexts never pass through
 prose escaping. Escaping source ampersands prevents Markdown from expanding
 a once-decoded entity a second time.
+
+The immediate newline after a pre start tag is checked against the tokenizer's
+existing source segments. Repeated single-byte subscripts into the full input
+measured poorly at 4 MiB; indexed segments preserve the original-byte decision,
+including quoted `<` characters in attributes, without rescanning the document.
+The measured before/after profiles and complete distributions are in benchmarks.md.
 
 Adjacent code captures merge through the previous fragment's known delimiter
 width, without retaining a second raw-code copy. Emphasis uses conservative
@@ -275,3 +290,83 @@ these decisions. The integration checks call the public function repeatedly
 in the same shell under adverse options, verify untouched regex scratch and
 unrelated parameters, exercise real 16 MiB counters, and run cold full
 conversion from another directory with command lookup unavailable.
+
+## Structured capture ownership
+
+Lists retain linked item records until numbering can be classified. Tables
+retain row/cell records until rectangularity, headers, spans and block content
+are known. Each body is charged once against the same live capture budget as
+ordinary text fragments; row/container records point to child records without
+copying their payload. Inline wrappers around structural members transfer the
+record chain in source order. These records contain only list/table metadata,
+not a general DOM. Closing a structure releases each record before its
+bounded transformed result transfers to its parent or finalized output.
+
+Continuation prefixes are added in 4,096-byte windows and checked against the
+output limit before joining. Table-cell serialization tracks generated code
+delimiters so prose escapes remain intact while literal code pipes receive a
+GFM escape, including pipes following a literal backslash. Captions precede
+the table and complex cells retain their existing rendered child blocks.
+108 additional hand-authored fixtures and ownership/output/window integration
+checks cover these rules, including strict rejection with no output.
+
+## Minimum-version verification
+
+The minimum is Zsh 5.8. Its unchanged upstream source archive was downloaded
+from `https://www.zsh.org/pub/old/zsh-5.8.tar.xz`; the upstream SHA256SUM file
+matched `dcc4b54cc5565670a65581760261c163d720991f0d06486da61f8d839b52de27`.
+A separate development build used:
+
+```sh
+./configure --prefix=/tmp/zhtml2md-zsh58-build/install --disable-dynamic \
+  --with-tcsetpgrp \
+  CFLAGS='-O2 -std=gnu89 -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error=implicit-int'
+make -j4
+```
+
+The compatibility flags allow the old configure probes to work with the
+host's modern compiler and curses headers; no upstream source was patched.
+This build has `zsh/regex` disabled, which exposed an implicit module dependency
+in earlier runtime matching. Native constant patterns now replace those
+matches. Cold tests also disable `module_path`: loader option detection uses
+a quoted builtin `set +o` snapshot rather than the module-backed `$options`
+map. This load-time command substitution runs Zsh builtins only; its listing
+is inspected as data and never evaluated. Converter helpers still share
+state directly, without subprocesses. The production library requires no compiler or native helper.
+
+Run the complete suite with the selected shell used for child processes too:
+
+```sh
+ZHTML2MD_TEST_ZSH=/absolute/path/to/zsh-5.8/Src/zsh \
+  /absolute/path/to/zsh-5.8/Src/zsh -df tests/run.zsh
+zsh -df tests/run.zsh
+```
+
+Both versions verify exact bytes, Unicode, aliases/options, repeated calls,
+resource boundaries, recovery, and cold conversion with external lookup
+unavailable and dynamic module lookup disabled. Linux is verified; this does not claim macOS validation.
+
+## Hardening and candidate evidence
+
+The mandatory suite now includes ten source/clean conversion checks,
+2,352 deterministic malformed-input checks under a development timeout,
+inert shell/numeric/pattern payloads, fixed persistent state over 100 complete
+conversions, and copied-layout library/CLI checks outside the repository.
+The optional real-zoup script verifies five pairs against zoup 0.1.0 on both
+supported shell versions. Independent markdown-it-py checks validate the
+emitted Markdown's headings, code, destinations, numbering and tables.
+
+`tools/audit-runtime` reviews evaluation/process boundaries and uses strace
+when installed. Cold module/PATH-disabled loading has eight builtin-only Zsh
+children for option snapshots; conversion has no child processes or external
+executables. CLI startup adds one such snapshot. This is the explicit loader
+exception to the original zero-process-load engineering target; HTML, static
+data and rendered text never pass through those child shells as code.
+
+Full benchmark seeds, drivers, raw samples, hashes and results are in bench/.
+The report distinguishes cold load, first conversion/entity initialization,
+20-run warm distributions, CLI startup and optional peak RSS. Optional token
+counts use a named tokenizer and separate cleanup from conversion. See
+docs/benchmarks.md and docs/release-readiness.md for the measured envelope and
+final acceptance review. The configured CI workflow has not been executed on
+the hosted runner as part of local verification.

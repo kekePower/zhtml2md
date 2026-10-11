@@ -1,4 +1,5 @@
 #!/usr/bin/env zsh
+# SPDX-License-Identifier: Apache-2.0
 # bin/zhtml2md - CLI wrapper for the zhtml2md library.
 #
 # Locates and sources the library relative to this script, forwards
@@ -10,8 +11,14 @@
 # of this script's parse. See zhtml2md.zsh for the full rationale.
 
 
-'builtin' 'typeset' _zhtml2md_cli_loadopt=${options[aliases]:-off}
+'builtin' 'typeset' _zhtml2md_cli_loadopt="$( 'builtin' 'set' '+o' )"
 'builtin' 'setopt' 'noaliases'
+if [[ $'\n'$_zhtml2md_cli_loadopt$'\n' == *$'\nset +o noaliases\n'* ||
+      $'\n'$_zhtml2md_cli_loadopt$'\n' == *$'\nset -o aliases\n'* ]]; then
+  _zhtml2md_cli_loadopt=on
+else
+  _zhtml2md_cli_loadopt=off
+fi
 
 'builtin' 'source' -- "${${${(%):-%N}:A}:h}/../zhtml2md.zsh" || {
   'builtin' 'print' -r -u 2 -- 'zhtml2md: initialization: cannot load library'
@@ -23,4 +30,4 @@ if [[ $_zhtml2md_cli_loadopt == on ]]; then
 fi
 'builtin' 'unset' _zhtml2md_cli_loadopt
 
-zhtml2md "$@"
+'zhtml2md' "$@"

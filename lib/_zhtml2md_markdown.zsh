@@ -1,9 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
 # Event-driven Markdown rendering. Captures own fragments only once;
 # joining a child releases its charge before transferring to its parent.
 # All state below is local to _zhtml2md_markdown's dynamic scope. Numeric
 # association keys and arithmetic operands are generated internally.
-'builtin' 'typeset' _zhtml2md_markdown_loadopt=${options[aliases]:-off}
+'builtin' 'typeset' _zhtml2md_markdown_loadopt="$( 'builtin' 'set' '+o' )"
 'builtin' 'setopt' 'noaliases'
+if [[ $'\n'$_zhtml2md_markdown_loadopt$'\n' == *$'\nset +o noaliases\n'* ||
+      $'\n'$_zhtml2md_markdown_loadopt$'\n' == *$'\nset -o aliases\n'* ]]; then
+  _zhtml2md_markdown_loadopt=on
+else
+  _zhtml2md_markdown_loadopt=off
+fi
 
 # Literal append, without whitespace policy. Linked fragments avoid
 # repeatedly copying a growing document for every short text/tag event.
@@ -109,12 +116,18 @@ _zhtml2md_r_escape() {
   local _s=$1 _c _chunk
   local -a _parts=() _marks=( '\' '`' '*' '_' '[' ']' '<' '>' '&' '#' '+' '-' '!' '(' ')' '|' '{' '}' )
   [[ $2 == destination ]] && _marks=( '\' '&' '<' '>' '(' ')' )
+  if [[ $2 == destination ]] && (( ${_zhtml2md_r_cellctx[$_zhtml2md_r_slot]:-0} )); then
+    _marks+=( '|' '`' )
+  fi
   local -i _pos=1 _size=0
   while (( _pos <= ${#_s} )); do
     _chunk=${_s[_pos,_pos+4095]}
     for _c in "${_marks[@]}"; do
       _chunk=${_chunk//"$_c"/"\\$_c"}
     done
+    if [[ $2 != destination ]] && (( ${_zhtml2md_r_cellctx[$_zhtml2md_r_slot]:-0} )); then
+      _chunk=${_chunk//'\& '/'& '}
+    fi
     (( _size += ${#_chunk} ))
     if (( _size > _ZHTML2MD_LIMIT_OUTPUT )); then
       _zhtml2md_fail resource-limit '' "escaped text exceeds $_ZHTML2MD_LIMIT_OUTPUT bytes" 4
@@ -162,7 +175,7 @@ _zhtml2md_r_normalize() {
 _zhtml2md_r_prose() {
   emulate -L zsh -o no_multibyte -o extended_glob
   local LC_ALL=C
-  local _s=$1 _chunk _text _first _last
+  local _s=$1 _chunk _text _first _last _number
   local -a _words
   local -i _pos=1 _slot=$_zhtml2md_r_slot
   local MATCH MBEGIN MEND
@@ -190,14 +203,15 @@ _zhtml2md_r_prose() {
     _text=$_zhtml2md_r_result
     # Protect ordered-list punctuation, including a number split over
     # inline boundaries. No general escape of ordinary sentence dots.
-    if [[ $_text =~ '^[0-9]{1,9}\.' ]]; then
-      _text=${_text[1,MEND-1]}'\.'${_text[MEND+1,-1]}
+    if [[ $_text == (#b)([0-9](#c1,9))\.* ]]; then
+      _number=${match[1]}
+      _text=$_number'\.'${_text[${#_number}+2,-1]}
     elif [[ $_text == .* ]] && [[ ${_zhtml2md_r_digits[$_slot]:-0} == 1 ]]; then
       _text='\'$_text
     fi
     if (( ! _zhtml2md_r_size[$_slot] || ${_zhtml2md_r_block[$_slot]:-0} )); then
       _zhtml2md_r_digits[$_slot]=0
-      [[ $_text =~ '^[0-9]{1,9}$' ]] && _zhtml2md_r_digits[$_slot]=1
+      [[ $_text == [0-9](#c1,9) ]] && _zhtml2md_r_digits[$_slot]=1
     elif [[ $_text != [0-9]## ]]; then
       _zhtml2md_r_digits[$_slot]=0
     fi
@@ -210,7 +224,7 @@ _zhtml2md_r_prose() {
 
 # Longest backtick run, with carry across bounded scanning windows.
 _zhtml2md_r_ticks() {
-  emulate -L zsh -o no_multibyte
+  emulate -L zsh -o no_multibyte -o extended_glob
   local LC_ALL=C
   local _s=$1 _t
   local -i _pos=1 _carry=0 _run=0 _max=0 _len
@@ -218,14 +232,13 @@ _zhtml2md_r_ticks() {
   local -a match mbegin mend
   while (( _pos <= ${#_s} )); do
     _t=${_s[_pos,_pos+4095]}
-    while [[ $_t =~ '`+' ]]; do
-      _len=${#_t}
-      _run=${#MATCH}
-      (( MBEGIN == 1 )) && (( _run += _carry ))
+    while [[ $_t == (#b)([^\`]#)(\`##)(*) ]]; do
+      _run=${#match[2]}
+      [[ -z ${match[1]} ]] && (( _run += _carry ))
       (( _run > _max )) && _max=$_run
       _carry=0
-      (( MEND == _len )) && _carry=$_run
-      _t=${_t[MEND+1,-1]}
+      [[ -z ${match[3]} ]] && _carry=$_run
+      _t=${match[3]}
     done
     [[ -n $_t ]] && _carry=0
     (( _pos += 4096 ))
@@ -374,11 +387,21 @@ _zhtml2md_r_push() {
   _zhtml2md_r_links[$_slot]=${_zhtml2md_r_links[$_old]:-0}
   _zhtml2md_r_digits[$_slot]=0
   _zhtml2md_r_code_id[$_slot]=0 _zhtml2md_r_code_edge[$_slot]=0
+  _zhtml2md_r_scope[$_slot]=${_zhtml2md_r_scope[$_old]}
+  _zhtml2md_r_cellctx[$_slot]=${_zhtml2md_r_cellctx[$_old]:-0}
+  _zhtml2md_r_records_head[$_slot]=0 _zhtml2md_r_records_tail[$_slot]=0
 }
 
 _zhtml2md_r_close() {
   emulate -L zsh -o no_multibyte
   local LC_ALL=C
+  case ${_zhtml2md_r_kind[$_zhtml2md_r_slot]} in
+    list|item|table|row|cell|caption) _zhtml2md_r_structure_close; return $? ;;
+  esac
+  if (( ${_zhtml2md_r_records_head[$_zhtml2md_r_slot]:-0} )); then
+    _zhtml2md_r_inline_records_close
+    return $?
+  fi
   local -i _slot=$_zhtml2md_r_slot _blocks=${_zhtml2md_r_blocks[$_zhtml2md_r_slot]:-0}
   local -i _leading=${_zhtml2md_r_leading[$_slot]:-0} _trailing=${_zhtml2md_r_space[$_slot]:-0}
   local -i _nested=${_zhtml2md_r_nested[$_slot]:-0}
@@ -458,9 +481,15 @@ _zhtml2md_r_close() {
         fi
       fi ;;
     quote)
-      [[ -n $_body ]] && _body='> '${_body//$'\n'/$'\n> '} ;;
+      if [[ -n $_body ]]; then
+        _zhtml2md_r_indent "$_body" '> ' '> ' || return $?
+        _body=$_zhtml2md_r_result
+      fi ;;
     option)
-      [[ -n $_body ]] && _body='- '${_body//$'\n'/$'\n  '} ;;
+      if [[ -n $_body ]]; then
+        _zhtml2md_r_indent "$_body" '- ' '  ' || return $?
+        _body=$_zhtml2md_r_result
+      fi ;;
   esac
   if (( _blocks )); then
     _zhtml2md_r_single[$_zhtml2md_r_slot]=0
@@ -516,6 +545,10 @@ _zhtml2md_render_event() {
   fi
   if [[ $_kind == open ]]; then
     case $_name in
+      ul|ol|li|table|tr|td|th|caption)
+        _zhtml2md_r_structure_open "$_name" || return $? ;;
+      thead|tbody|tfoot)
+        [[ ${_zhtml2md_r_scope[$_slot]} == table ]] || _zhtml2md_r_boundary ;;
       h[1-6])
         _zhtml2md_r_boundary; _zhtml2md_r_push heading
         _zhtml2md_r_single[$_zhtml2md_r_slot]=1 ;;
@@ -533,8 +566,21 @@ _zhtml2md_render_event() {
       code|pre|textarea|plaintext)
         [[ $_name != code ]] && _zhtml2md_r_boundary
         _zhtml2md_r_push raw
-        if [[ $_name == pre && ${_zhtml2md_input[_zhtml2md_event_end+1]} == [$'\r\n'] ]]; then
-          _zhtml2md_r_strip[$_zhtml2md_r_slot]=1
+        if [[ $_name == pre ]]; then
+          # Select the byte after this tag from the existing '<' index.
+          # Repeated subscripting of the whole input rescans its metadata
+          # and measured quadratic growth on many fenced code blocks.
+          # Quoted '<' bytes can put the tag end in a later segment.
+          local -i _j=$(( _zhtml2md_lex_index + 1 )) _base _at
+          while (( _j <= _zhtml2md_lex_count &&
+                   ${_zhtml2md_lex_lt[$_j]:-0} < _zhtml2md_event_end )); do
+            (( ++_j ))
+          done
+          _base=$(( ${_zhtml2md_lex_lt[$((_j-1))]} + 1 ))
+          _at=$(( _zhtml2md_event_end - _base + 1 ))
+          if [[ ${_zhtml2md_lex_segments[$_j][_at]} == [$'\r\n'] ]]; then
+            _zhtml2md_r_strip[$_zhtml2md_r_slot]=1
+          fi
         fi ;;
       dd|blockquote)
         _zhtml2md_r_boundary; _zhtml2md_r_push quote ;;
@@ -543,7 +589,10 @@ _zhtml2md_render_event() {
       *) _zhtml2md_breaks_p "$_name" && _zhtml2md_r_boundary ;;
     esac
   elif [[ $_kind == close ]]; then
-    _zhtml2md_breaks_p "$_name" && _zhtml2md_r_boundary
+    if [[ $_name != thead && $_name != tbody && $_name != tfoot ]] ||
+       [[ ${_zhtml2md_r_scope[$_slot]} != table ]]; then
+      _zhtml2md_breaks_p "$_name" && _zhtml2md_r_boundary
+    fi
   elif [[ $_kind == void ]]; then
     case $_name in
       br)
@@ -620,6 +669,14 @@ _zhtml2md_markdown() {
   local -A _zhtml2md_r_single=() _zhtml2md_r_format=() _zhtml2md_r_links=() _zhtml2md_r_nested=()
   local -A _zhtml2md_r_digits=()
   local -A _zhtml2md_r_code_id=() _zhtml2md_r_code_edge=()
+  local -i _zhtml2md_r_record_serial=0 _zhtml2md_r_record_new=0
+  local -A _zhtml2md_r_scope=() _zhtml2md_r_cellctx=()
+  local -A _zhtml2md_r_records_head=() _zhtml2md_r_records_tail=()
+  local -A _zhtml2md_r_record_next=() _zhtml2md_r_record_kind=() _zhtml2md_r_record_text=()
+  local -A _zhtml2md_r_record_name=() _zhtml2md_r_record_value=() _zhtml2md_r_record_child=()
+  local -A _zhtml2md_r_record_rs=() _zhtml2md_r_record_cs=() _zhtml2md_r_record_flags=()
+  local -A _zhtml2md_r_list_start=() _zhtml2md_r_list_reversed=() _zhtml2md_r_item_value=()
+  local -A _zhtml2md_r_cell_rs=() _zhtml2md_r_cell_cs=()
   _zhtml2md_parse || return $?
   if (( _zhtml2md_r_slot != 1 || _zhtml2md_r_pending != 0 )); then
     _zhtml2md_fail internal '' 'renderer capture imbalance' 1

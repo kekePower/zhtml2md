@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Development audit of runtime source and Linux process traces."""
+import argparse
+import re
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def main():
+    args = argparse.ArgumentParser()
+    args.add_argument('--zsh', default=shutil.which('zsh'))
+    options = args.parse_args()
+    runtime = [ROOT / 'zhtml2md.zsh', ROOT / 'bin/zhtml2md', *sorted((ROOT / 'lib').glob('*.zsh'))]
+    for file in runtime:
+        # Conservatively flag evaluation/exec boundaries for human review.
+        # Known uses of source are constant installation paths only.
+        for number, line in enumerate(file.read_text().splitlines(), 1):
+            if line.lstrip().startswith('#'):
+                continue
+            if re.search(r'\b(eval|zmodload|command)\b|=~|\$\{\([^}]*[eP]\)|[<>]\(', line):
+                raise AssertionError(f'review runtime boundary {file.name}:{number}: {line}')
+            if re.search(r'\$\((?!\()', line) and "$( 'builtin' 'set' '+o' )" not in line:
+                raise AssertionError(f'unreviewed command substitution {file.name}:{number}')
+    tracer = shutil.which('strace')
+    if not tracer:
+        print('source audit passed; SKIP process trace (install development strace)')
+        return 0
+    shell = str(Path(options.zsh).resolve())
+    with tempfile.TemporaryDirectory(prefix='zhtml2md-audit-') as scratch:
+        trace = Path(scratch) / 'trace'
+        # Mark phases with builtin stderr writes. No harness subprocesses
+        # occur in the traced Zsh except the reviewed loader snapshots.
+        script = '''
+module_path=( /nonexistent-zhtml2md-modules )
+PATH=$1
+builtin print -r -u 2 LOAD_START
+source "$2/zhtml2md.zsh" || exit 1
+builtin print -r -u 2 LOAD_END
+builtin print -r -u 2 CONVERT_START
+zhtml2md --strict -- "$2/tests/fixtures/m4-acceptance-strict.html" > /dev/null || exit 1
+zhtml2md --strict -- "$2/tests/fixtures/m4-pipe-url-strict.html" > /dev/null || exit 1
+builtin print -r -u 2 CONVERT_END
+'''
+        subprocess.run([tracer,'-f','-e','trace=process,write','-o',str(trace),shell,'-df','-c',script,'zsh',scratch,str(ROOT)],check=True,capture_output=True)
+        lines = trace.read_text().splitlines()
+        executions = [line for line in lines if 'execve(' in line]
+        assert len(executions) == 1, executions
+        assert not any('clone(' in line or 'clone3(' in line or 'fork(' in line or 'vfork(' in line for line in lines[ next(i for i,l in enumerate(lines) if 'CONVERT_START' in l) :]), 'conversion forked'
+        clones = sum('clone(' in line or 'clone3(' in line or 'fork(' in line or 'vfork(' in line for line in lines)
+        assert clones == len(runtime) - 1, clones
+        print(f'runtime audit: {len(runtime)} source files; one Zsh exec; {clones} builtin-only load children; zero conversion children')
+        cli_trace = Path(scratch) / 'cli-trace'
+        subprocess.run([tracer,'-f','-e','trace=process','-o',str(cli_trace),shell,'-df',str(ROOT/'bin/zhtml2md'),'--strict','--',str(ROOT/'tests/fixtures/m4-acceptance-strict.html')],
+            env={'PATH':scratch},check=True,capture_output=True)
+        cli_lines = cli_trace.read_text().splitlines()
+        assert sum('execve(' in line for line in cli_lines) == 1
+        cli_clones = sum('clone(' in line or 'clone3(' in line or 'fork(' in line or 'vfork(' in line for line in cli_lines)
+        assert cli_clones == len(runtime), cli_clones
+        print(f'CLI audit: one Zsh exec; {cli_clones} builtin-only snapshot children')
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

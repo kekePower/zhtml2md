@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # lib/_zhtml2md_input.zsh - input reading, encoding validation, BOM.
 #
 # Sourced by zhtml2md.zsh. The guard below protects this file's parse if
@@ -5,8 +6,14 @@
 # loader (NO_ALIASES is already in effect there).
 
 
-'builtin' 'typeset' _zhtml2md_input_loadopt=${options[aliases]:-off}
+'builtin' 'typeset' _zhtml2md_input_loadopt="$( 'builtin' 'set' '+o' )"
 'builtin' 'setopt' 'noaliases'
+if [[ $'\n'$_zhtml2md_input_loadopt$'\n' == *$'\nset +o noaliases\n'* ||
+      $'\n'$_zhtml2md_input_loadopt$'\n' == *$'\nset -o aliases\n'* ]]; then
+  _zhtml2md_input_loadopt=on
+else
+  _zhtml2md_input_loadopt=off
+fi
 
 # _zhtml2md_read_all
 #

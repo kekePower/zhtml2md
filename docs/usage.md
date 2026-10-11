@@ -1,17 +1,14 @@
 # zhtml2md usage
 
 `zhtml2md` converts UTF-8 HTML into compact, deterministic Markdown.
-It is a pure Zsh 5.9+ library with a small CLI wrapper. The definitive
+It is a pure Zsh 5.8+ library with a small CLI wrapper. The definitive
 behavior contract is docs/implementation-plan.md; this guide covers the
 interface.
 
-Current implementation status: milestones 0-3 are complete. Public
-conversion applies HTML recovery, discard policies, reference decoding,
-and Markdown rendering for prose, headings, emphasis, links, images and
-code, plus form/definition fallbacks. Nested lists and tables still need
-milestone 4: their retained text currently has paragraph boundaries, without
-list numbering, hierarchy or table/span relationships. See
-docs/supported-html.md before using this development version on those inputs.
+The v1 candidate implements the documented interface and HTML subset.
+It is verified on Linux with Zsh 5.8 and 5.9.2. See supported-html.md for
+rendering rules and fallbacks, benchmarks.md for measured costs, and
+release-readiness.md for the completed acceptance review.
 
 ## Installation
 
@@ -19,6 +16,16 @@ Copy the repository layout intact. `zhtml2md.zsh`, `lib/`, `data/`, and `bin/`
 must remain siblings; the library locates its files relative to its own
 path, so it works from any working directory. Nothing is downloaded,
 generated, or compiled on first use.
+
+For example, create a user-owned installation directory and copy the whole
+checkout into it (including LICENSE, NOTICE and data/LICENSE.WHATWG). Then
+source its `zhtml2md.zsh`, or add its `bin` directory to PATH for the CLI.
+The CLI's `env zsh` shebang selects Zsh from PATH; an explicit invocation such
+as `/absolute/path/to/zsh -df /path/to/bin/zhtml2md -- page.html` selects a
+particular interpreter. Linux is tested; macOS support is not yet claimed.
+
+For a pipeline with an upstream cleaner, see zoup-integration.md. zoup is
+optional; no special cleaned-input mode is needed.
 
 ## Library
 

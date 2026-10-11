@@ -1,100 +1,55 @@
 #!/usr/bin/env zsh
-# bench/run.zsh - benchmark driver (milestone 0 skeleton; the full
-# protocol of plan section 12 lands with milestone 5).
-#
-# Development-only tooling: uses zmodload zsh/datetime for timing and
-# mkdir/rm for the corpus directory. These are never runtime
-# dependencies of the library. No network access is performed.
-#
-# Usage: zsh -df bench/run.zsh
-
+# Full offline conversion benchmark. GNU time is optional, development-only.
+# Usage: zsh -df bench/run.zsh [RUNS>=20] [FILES...] > results.tsv
 'builtin' 'setopt' 'noaliases'
-emulate -L zsh -o no_multibyte
+emulate -L zsh -o no_multibyte -o extended_glob
 local LC_ALL=C
-
-zmodload zsh/datetime || {
-  builtin print -r -u 2 -- 'bench: zsh/datetime module unavailable (development-only dependency)'
-  exit 1
-}
-
 local -r root=${${${(%):-%N}:A:h}:h}
-local -r corpus=$root/bench/corpus
-local -r zsh_exe=${ZHTML2MD_TEST_ZSH:-$(whence -p zsh)}
-command mkdir -p -- "$corpus"
-
-# --- corpus generation (deterministic, exact byte counts recorded) -------
-# Representative "typical prose/markup" family; more families (code-heavy,
-# tables, entity-heavy, discard-heavy) arrive with milestone 5.
-local -r para='<p>Shell tools compose. A paragraph of prose with an
-<a href="./guide">inline link</a>, some <strong>emphasis</strong>, and
-an entity &amp; reference, repeated to build realistic bulk.</p>
-<h2>Section heading</h2>
-'
-
-_zb_gen() {  # target-bytes outfile
-  local -i target=$1
-  local s=$para
-  while (( ${#s} < target )); do s+=$s; done
-  builtin printf '%s' "${s[1,$target]}" > "$2"
-}
-
-local -a sizes=( 10240 102400 1048576 )
-local -a files=()
-local -i sz
-for sz in "${sizes[@]}"; do
-  local f=$corpus/prose-$sz.html
-  [[ -s $f ]] || _zb_gen $sz "$f"
-  files+=( "$f" )
-done
-
-builtin print -r -- "# zhtml2md benchmark skeleton"
-builtin print -r -- "# zsh $ZSH_VERSION on $OSTYPE"
-builtin print -r -- ""
-
-# --- cold library load ----------------------------------------------------
-local -a cold=()
-local -i i
-local t0
-for (( i = 0; i < 5; i++ )); do
-  t0=$EPOCHREALTIME
-  "$zsh_exe" -df -c 'builtin source -- "$1"' zsh "$root/zhtml2md.zsh" || {
-    builtin print -r -u 2 -- 'bench: cold load failed'; exit 1 }
-  cold+=( $(( (EPOCHREALTIME - t0) * 1000 )) )
-done
-local -a sorted=( ${(on)cold} )
-builtin print -r -- "cold load:    median ${sorted[3]} ms  (5 runs: ${(j:, :)cold})"
-
-# --- warm conversions ------------------------------------------------------
-# One child process loads the library once and converts each corpus file
-# 20 times, reporting per-iteration milliseconds.
-local -r child_out=$("$zsh_exe" -df -c '
-  emulate -L zsh -o no_multibyte
-  local LC_ALL=C
-  zmodload zsh/datetime
-  builtin source -- "$1" || exit 1
-  shift
-  local f='' t0=0
-  local -a ts=()
-  local -i i=0
-  for f in "$@"; do
-    ts=()
-    for (( i = 0; i < 20; i++ )); do
-      t0=$EPOCHREALTIME
-      zhtml2md -- "$f" > /dev/null || exit 2
-      ts+=( $(( (EPOCHREALTIME - t0) * 1000 )) )
+local zsh_exe=${ZHTML2MD_TEST_ZSH:-$(whence -p zsh)}
+local runs=${1:-20}
+[[ $runs == [0-9]## && ${#runs} -le 4 ]] && (( runs >= 20 && runs <= 1000 )) || { builtin print -r -u 2 -- 'bench: runs must be 20..1000'; exit 2 }
+(( $# )) && shift
+local -a files=( "$@" )
+if (( ! ${#files} )); then
+  "$zsh_exe" -df "$root/bench/gen-corpus.zsh" > /dev/null || exit 1
+  files=( "$root"/bench/generated/*.html(N) )
+fi
+(( ${#files} )) || exit 2
+zmodload zsh/datetime || exit 1
+local -r tmp=${TMPDIR:-/tmp}/zhtml2md-bench.$$
+command mkdir -p -- "$tmp" || exit 1
+trap "command rm -rf -- ${(q)tmp}" EXIT
+local -a timer=()
+[[ -x /usr/bin/time ]] && timer=( /usr/bin/time -f '%M' )
+local file row worker_rss cli_rss start cli_ms
+if [[ -n $ZHTML2MD_BENCH_SAMPLES && ! -s $ZHTML2MD_BENCH_SAMPLES ]]; then
+  {
+    builtin printf 'case'
+    local -i sample_index
+    for (( sample_index=1; sample_index<=runs; ++sample_index )); do
+      builtin printf '\twarm_ms_%d' $sample_index
     done
-    builtin print -r -- "${f:t}|${(j: :)ts}"
-  done
-' zsh "$root/zhtml2md.zsh" "${files[@]}") || {
-  builtin print -r -u 2 -- 'bench: warm run failed'; exit 1 }
-
-local line='' f=''
-for line in "${(@f)child_out}"; do
-  f=${line%%|*}
-  local -a ts=( ${(s: :)${line#*|}} )
-  local -a st=( ${(on)ts} )
-  builtin print -r -- "warm ${f}: median ${st[10]} ms  p95 ${st[19]} ms  (n=20)"
+    builtin printf '\n'
+  } > "$ZHTML2MD_BENCH_SAMPLES" || exit 1
+fi
+builtin print -r -- $'case\tzsh\tinput_bytes\toutput_bytes\truns\tload_ms\tfirst_ms\twarm_median_ms\twarm_p95_ms\tcli_ms\tworker_peak_kib\tcli_peak_kib'
+for file in "${files[@]}"; do
+  builtin print -r -u 2 -- "bench: ${file:t} ($runs warm runs)"
+  local -a measure=( "${timer[@]}" )
+  (( ${#measure} )) && measure+=( -o "$tmp/worker.rss" )
+  row=$( "${measure[@]}" "$zsh_exe" -df "$root/bench/worker.zsh" "$file" "$runs" "$tmp" ) || exit 1
+  worker_rss=unavailable
+  [[ -r $tmp/worker.rss ]] && worker_rss=$(<"$tmp/worker.rss")
+  measure=( "${timer[@]}" )
+  (( ${#measure} )) && measure+=( -o "$tmp/cli.rss" )
+  start=$EPOCHREALTIME
+  "${measure[@]}" "$zsh_exe" -df "$root/bin/zhtml2md" --strict -- "$file" > /dev/null 2> "$tmp/err" || exit 1
+  cli_ms=$(( (EPOCHREALTIME-start)*1000 ))
+  cli_rss=unavailable
+  [[ -r $tmp/cli.rss ]] && cli_rss=$(<"$tmp/cli.rss")
+  builtin printf '%s\t%.3f\t%s\t%s\n' "$row" $cli_ms "$worker_rss" "$cli_rss"
+  if [[ -n $ZHTML2MD_BENCH_SAMPLES ]]; then
+    builtin print -r -- "$(<"$tmp/samples")" >> "$ZHTML2MD_BENCH_SAMPLES" || exit 1
+  fi
 done
-for f in "${files[@]}"; do
-  builtin print -r -- "corpus ${f:t}: $(command wc -c < "$f") bytes"
-done
+exit 0

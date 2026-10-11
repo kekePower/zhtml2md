@@ -1,7 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
 # Iterative semantic frames and the v1 recovery contract. No DOM, no
 # recursion per element, and no variable/function names derived from HTML.
-'builtin' 'typeset' _zhtml2md_frames_loadopt=${options[aliases]:-off}
+'builtin' 'typeset' _zhtml2md_frames_loadopt="$( 'builtin' 'set' '+o' )"
 'builtin' 'setopt' 'noaliases'
+if [[ $'\n'$_zhtml2md_frames_loadopt$'\n' == *$'\nset +o noaliases\n'* ||
+      $'\n'$_zhtml2md_frames_loadopt$'\n' == *$'\nset -o aliases\n'* ]]; then
+  _zhtml2md_frames_loadopt=on
+else
+  _zhtml2md_frames_loadopt=off
+fi
 
 # _zhtml2md_repair CATEGORY OFFSET MESSAGE
 # Uses the public diagnostic/strict context. Strict mode stops at the
@@ -159,9 +166,8 @@ _zhtml2md_validate_numeric_attrs() {
     if [[ $_digits != [0-9]## ]]; then
       _bad=1
     else
-      if [[ $_digits =~ '^0+' ]]; then
-        _digits=${_digits[MEND+1,-1]}
-      fi
+      [[ $_digits == (#b)(0#)(*) ]]
+      _digits=${match[2]}
       if (( ${#_digits} > 9 )); then
         _bad=1
       else

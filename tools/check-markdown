@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""Optional independent Markdown checks; requires markdown-it-py 3.0.0."""
+from pathlib import Path
+from urllib.parse import unquote
+from markdown_it import MarkdownIt
+
+ROOT = Path(__file__).resolve().parents[1]
+PARSER = MarkdownIt('commonmark').enable('table')
+
+
+def tokens(name):
+    return PARSER.parse((ROOT / 'tests/fixtures' / f'm4-{name}-strict.md').read_text())
+
+
+def children(items):
+    for item in items:
+        yield item
+        if item.children:
+            yield from children(item.children)
+
+
+def values(name, kind):
+    return [item.content for item in children(tokens(name)) if item.type == kind]
+
+
+def main():
+    checks = 0
+    def check(condition, message):
+        nonlocal checks
+        checks += 1
+        if not condition:
+            raise AssertionError(message)
+    acceptance = list(children(tokens('acceptance')))
+    check(any(t.type == 'heading_open' and t.tag == 'h1' for t in acceptance), 'heading retained')
+    check([t.content for t in acceptance if t.type == 'code_inline'] == ['zhtml2md'], 'inline code')
+    check([t.content for t in acceptance if t.type == 'fence'] == ['print -r -- "hello"\n'], 'fence bytes')
+    check([t.attrGet('href') for t in acceptance if t.type == 'link_open'] == ['./guide'], 'link target')
+    check(sum(t.type == 'list_item_open' for t in acceptance) == 2, 'list membership')
+    check(values('table', 'inline') == ['A','B','C','D'], 'rectangular cells')
+    check(values('no-header', 'inline') == ['','','A','B'], 'synthetic header retains every source cell')
+    check(values('code-slash-pipe', 'code_inline') == ['a\\|b'], 'code backslash and pipe')
+    check(values('pipes', 'code_inline') == ['C|D'], 'code pipe survives GFM escaping')
+    check(values('escaped-ticks', 'code_inline') == ['`c|d`'], 'backtick delimiter collision')
+    links = [t for t in children(tokens('pipe-url')) if t.type == 'link_open']
+    check([unquote(t.attrGet('href')) for t in links] == ['a|b`c'], 'destination escaping')
+    images = [t for t in children(tokens('pipe-url')) if t.type == 'image']
+    check([unquote(t.attrGet('src')) for t in images] == ['i|j'], 'image destination')
+    check([c.content for t in images for c in t.children or []] == ['Y|Z'], 'image description')
+    check(sum(t.type == 'ordered_list_open' for t in tokens('nested')) == 1, 'nested ordered hierarchy')
+    check(any(t.type == 'ordered_list_open' and t.attrGet('start') == 9 for t in tokens('width')), 'actual start')
+    reverse = tokens('reverse')
+    check(sum(t.type == 'bullet_list_open' for t in reverse) == 1 and not any(t.type == 'ordered_list_open' for t in reverse), 'reversed labels use bullets')
+    check(values('reverse','text') == ['3. A','2. B','1. C'], 'every reversed number remains literal')
+    check(values('list-code','fence') == [' x\n\ty\n'], 'indented code whitespace')
+    check(sum(t.type == 'blockquote_open' for t in tokens('quote')) == 2, 'quote depth')
+    check(values('nested-table','inline') == ['Row 1','Cell:','A'], 'nested table survives complex fallback')
+    check(values('spans','inline') == ['Row 1','Header (rowspan=0, colspan=2): A','Cell: B'], 'span metadata remains once')
+    check(values('amp','text') == ['&lt; & A & B &notanentity;'], 'entities never expand twice')
+    print(f'independent Markdown: {checks} semantic checks passed')
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

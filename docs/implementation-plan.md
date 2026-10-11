@@ -1,17 +1,18 @@
 # zhtml2md implementation plan
 
-Status: active implementation contract. Milestone 0 (runtime mechanics,
-recorded in docs/development.md) and milestone 1 (library and I/O
-contract) are complete and verified. Milestone 2's tokenizer, entity
-decoder, and iterative structural recovery are complete. Milestone 3
-connects these components to the public Markdown renderer and is complete.
-Milestones 4-6 remain pending; list/table relationships are not yet rendered
-by this development version. Their retained text has paragraph boundaries.
+Status: v1 release-candidate implementation contract. Milestones 0–4
+implement the library, parser, recovery and full supported rendering.
+Milestones 5–6 add hardening, source/cleaned zoup contracts, reproducible
+full-conversion measurements, notices, CI and installed-layout validation.
+Acceptance evidence and any performance-envelope revisions are recorded in
+docs/release-readiness.md and docs/benchmarks.md. Completing this work does
+not publish a release.
 
 Prepared: 2026-10-10. Milestone 0-1 implementation: 2026-10-10.
 Entity component implementation: 2026-10-10.
 Tokenizer/frame component implementation: 2026-10-10.
 Public prose/inline/code rendering: 2026-10-10.
+Nested structures, Zsh 5.8 baseline, hardening and candidate review: 2026-10-11.
 
 ## 1. Intended outcome
 
@@ -27,7 +28,8 @@ HTML acquisition → zoup cleanup → semantic HTML → zhtml2md → Markdown �
 
 The end result is a versioned library and CLI, documented behavior, an offline fixture suite, a reproducible benchmark, and evidence that the shipped runtime uses no external conversion programs. A smaller representation is desirable, but semantic correctness takes priority over minimum byte count. Token reduction must be measured with a named tokenizer before being reported as a token metric.
 
-This document specifies v1. It is a plan, not a claim that any acceptance criterion already passes.
+This document specifies v1. The completion checklist is backed by the
+artifacts and local results linked in docs/release-readiness.md.
 
 ## 2. Goals
 
@@ -60,7 +62,7 @@ This document specifies v1. It is a plan, not a claim that any acceptance criter
 
 ## 4. Supported environment and distribution
 
-Target Zsh 5.9 and later stable releases. The local development installation is Zsh 5.9.2. Use no development-only language features. Linux is the initial supported platform. Before claiming macOS support, run the same suite on its supported Zsh version and verify path and input behavior there.
+Target Zsh 5.8 and later stable releases. The local development installation is Zsh 5.9.2. Use no development-only language features. Linux is the initial supported platform. Before claiming macOS support, run the same suite on its supported Zsh version and verify path and input behavior there.
 
 The library is a sourceable collection of shell functions, not a native binary module. Sourcing is the required v1 loading mechanism. Keep a future autoload adapter possible without making it a separate v1 deliverable. Zsh's function-loading mechanisms are documented in the [Zsh function manual](https://zsh.sourceforge.io/Doc/Release/Functions.html).
 
@@ -72,7 +74,7 @@ Developer tools for documentation, CI, independent Markdown verification, and op
 
 ### 5.1 Library
 
-Planned usage after implementation:
+Supported usage:
 
 ```zsh
 source /path/to/zhtml2md/zhtml2md.zsh
@@ -129,7 +131,10 @@ Tolerant repairs produce bounded diagnostics on stderr and still return `0`. Rep
 
 ## 6. Contract with zoup
 
-This is a proposed interoperability contract. No inspection or implementation of `zoup` is assumed by this plan.
+The contract is independently testable without zoup. Five synthetic pairs
+also pass the optional scalar-API pipeline against zoup 0.1.0, commit
+`b9dd8c07570347fa0cfa73b3bd9219eb1fd12e6d`, on Zsh 5.8 and 5.9.2. See
+docs/zoup-integration.md and tests/contracts/README.md.
 
 ### 6.1 What zoup supplies
 
@@ -261,11 +266,20 @@ Ignore presentation attributes and optional link titles in v1. A code-language h
 
 For unordered lists use `-`. For ordered lists honor validated `start` and `li value` values. Accept signed decimal values in the range -999999999 to 999999999 after bounded textual validation. Determine subsequent item numbers without evaluating source expressions. Buffer each ordered list's item metadata to classify its numbering; when `reversed` has no explicit start, use the item count. `reversed` is a boolean attribute: its presence activates descending numbering regardless of its string value. CommonMark renderers infer consecutive numbering rather than respecting each marker's value. Therefore use a native ordered list only for nonnegative, ascending-by-one sequences with at most nine digits per marker. For negative, descending, discontinuous, or wider numbers, use an unordered list with explicit literal number labels, preserving every supplied/generated number.
 
+Explicit numeric labels escape their period, for example `- 3\. Item`.
 Indent list continuation content by the actual marker width. Cover multiline paragraphs, code blocks, quotes, and nested lists. An orphan `li` has the documented tolerant repair described below.
 
 A simple table has no nested tables, non-unit spans, block content, multiline code, internal hard breaks, or inconsistent row widths. Missing span attributes mean one. Accept bounded decimal `rowspan` values from 0 to 65534 and `colspan` values from 1 to 1000; `rowspan=0` retains its meaning as a span through the remaining row group and triggers the complex fallback. An empty table emits only its caption, if present. If the first row is entirely `th`, use it as the header. Otherwise synthesize an empty header row and retain every original row as data. Emit a caption as a paragraph immediately before the table. Escape cell pipes and other Markdown syntax according to table context.
+A prose ampersand followed by ASCII space can remain literal; other
+ampersands remain escaped to prevent a second entity expansion.
 
-For a complex table emit a caption, then an ordered list of source rows. Each row contains an ordered list of source cells, identifying `th` cells as headers and stating any non-unit `rowspan`/`colspan` next to the cell, including `rowspan=0`. Preserve the cell's block content and nested tables through the same renderer. Do not duplicate spanning cell text, invent column names, or imply a rectangular alignment the converter has not established. Valid complex tables require no recovery warning.
+For a complex table emit a caption, then an ordered list of source rows. Each row contains an ordered list of source cells, identifying `th` cells as headers and stating any non-unit `rowspan`/`colspan` next to the cell, including `rowspan=0`. Preserve the cell's block content and nested tables through the same renderer. Do not duplicate spanning cell text, invent column names, or imply a rectangular alignment the converter has not established. Valid complex tables require no recovery warning. Use `Row N` labels for
+source rows and `Header`/`Cell` labels for source cells, with non-unit spans
+formatted as `(rowspan=N, colspan=N)`. Block-bearing cells place their child
+content after a blank line following the label. Text among table/row members
+is retained in source order through this fallback. A direct table cell without
+an explicit row becomes a single-cell source row; a standalone cell retains
+its cell label and span metadata, without an invented table.
 
 ### 7.6 Character references and encoding
 
@@ -408,14 +422,14 @@ Each milestone produces code, documentation updates, and the named verification 
 
 Tasks:
 
-1. Confirm Zsh 5.9 availability and the stable builtin semantics needed for reading, byte slicing, associations, and output.
+1. Confirm Zsh 5.8 availability and the stable builtin semantics needed for reading, byte slicing, associations, and output.
 2. Prototype fixed-size builtin reads under a local C locale. Verify partial final reads, empty input, NUL detection, CRLF, exact-boundary EOF, and pipes. Do not depend on `/dev/stdin` or `/proc`.
 3. Prototype UTF-8 validation and numeric-reference-to-UTF-8 emission using builtins only, including two-code-point values and invalid ranges.
 4. Prototype safe source loading under aliases and adverse shell options; locate sibling files when sourced through an absolute or relative path.
 5. Compare byte scanning with text-span scanning on small and 1 MiB synthetic inputs. Identify full-tail copies or quadratic work before adopting the tokenizer structure.
 6. Add the minimal offline fixture runner, benchmark skeleton, and versioned constants for limits and statuses.
 
-Acceptance: the mechanical probes pass on 5.9 and the local version, including operation without external programs on `PATH`. Record the chosen mechanics in `docs/development.md`. If a proposed mechanism fails, replace it with another builtin design and revise this plan before building the parser; do not introduce an external runtime dependency.
+Acceptance: the mechanical probes pass on 5.8 and the local version, including operation without external programs on `PATH`. Record the chosen mechanics in `docs/development.md`. If a proposed mechanism fails, replace it with another builtin design and revise this plan before building the parser; do not introduce an external runtime dependency.
 
 ### Milestone 1 — Library and I/O contract [COMPLETE]
 
@@ -467,10 +481,10 @@ and rendering integration assertions for ownership transfers, exact 16 MiB
 fragment/capture caps, final-LF accounting, depth 256, scanning-window seams,
 code delimiter collisions, form values, discard isolation, warning summaries,
 hostile aliases/options/regex state, repeated use, and empty PATH. Validation
-uses Zsh 5.9.2; minimum-version and complete-conversion benchmarking remain
-release/hardening work. List/table rendering remains milestone 4.
+originally used Zsh 5.9.2. The minimum-version migration now verifies the
+same suite on Zsh 5.8; complete-conversion benchmarking remains hardening work.
 
-### Milestone 4 — Nested structures and tables
+### Milestone 4 — Nested structures and tables [COMPLETE]
 
 Tasks:
 
@@ -481,7 +495,16 @@ Tasks:
 
 Acceptance: lists preserve hierarchy and numbering, quotes cover all lines, and every source table cell remains represented in order. Span information survives without fabricated alignment or repeated cell text.
 
-### Milestone 5 — zoup contract, hardening, and performance
+Verified artifacts: `_zhtml2md_structures.zsh`, 108 hand-authored Markdown
+fixtures (including strict/tolerant repairs and the exact section 14.1
+acceptance example), and public integration assertions for shared record/text
+capture limits, marker/output boundaries, cell-escaping windows, cold empty
+PATH conversion, aliases, and caller-state preservation. Lists and tables
+retain linked member records rather than a general DOM. Runtime patterns use
+native Zsh matching, with no implicit dependency on `zsh/regex`. Parse checks
+and the offline suite run on actual Zsh 5.8 and Zsh 5.9.2 binaries.
+
+### Milestone 5 — zoup contract, hardening, and performance [COMPLETE]
 
 Tasks:
 
@@ -494,17 +517,35 @@ Tasks:
 
 Acceptance: all semantic, shell-hygiene, resource, and runtime-purity checks pass; the benchmark report exists and identifies any unmet performance target. Optional zoup checks remain clearly marked until an actual zoup API/version is available.
 
-### Milestone 6 — Release readiness
+Verified artifacts: five reviewed source/clean contract pairs, with exact
+bytes checked against actual zoup 0.1.0 / b9dd8c0 on both supported test
+versions; 2,352 deterministic mutation checks under a development timeout;
+14 hardening assertions; source/process audits of library and CLI; and 22
+independent Markdown semantic checks. The complete benchmark uses seven
+synthetic families at four exact sizes, independently authored expected
+Markdown, 20 warm runs, load/first/CLI timings, RSS, hashes and optional
+tiktoken 0.11.0 / cl100k_base metrics. See docs/benchmarks.md for preservation
+evidence, profiling and the measured performance envelope.
+
+### Milestone 6 — Release readiness [COMPLETE]
 
 Tasks:
 
 1. Complete README, installation/usage, supported behavior/deviations, contribution/testing instructions, data provenance, and benchmark report.
 2. Select and document the project license; verify that vendored data notices are retained.
-3. Run mandatory checks on Zsh 5.9 and the current stable development environment. Add CI if the repository's eventual hosting environment supports it.
+3. Run mandatory checks on Zsh 5.8 and the current stable development environment. Add CI if the repository's eventual hosting environment supports it.
 4. Verify the CLI and sourceable library from outside the checkout directory with the installed layout.
 5. Review the completion checklist below against artifacts and actual results.
 
 Acceptance: a v1 candidate satisfies every mandatory completion criterion. Implementing this plan does not by itself authorize publishing a release or choosing a hosting destination.
+
+Verified artifacts: candidate 1.0.0-rc.1, README and usage/support/development
+guides, CONTRIBUTING.md, retained Apache-2.0 LICENSE and upstream entity
+notices, installed-copy checks from a foreign cwd, and the acceptance review
+in docs/release-readiness.md. Parse checks and the mandatory offline suite
+pass on actual Zsh 5.8 and 5.9.2: 307 checks, zero failures each. The pinned
+GitHub Actions matrix is configured and checked locally; no hosted run is
+claimed, and no release publication or tag is part of this milestone.
 
 ## 11. Verification strategy
 
@@ -558,7 +599,11 @@ Initial engineering targets on a documented developer machine:
 - Warm 100 KiB typical prose/markup conversion: median no greater than 1 second.
 - Warm 1 MiB typical prose/markup conversion: median no greater than 10 seconds.
 - For the same synthetic document family, a 10× input increase should generally stay below 15× warm runtime after accounting for measurement noise. This is a regression signal, not a complexity proof.
-- No external processes in library loading or the conversion loop.
+- No external executable work during library loading or conversion, and no
+  child processes in the conversion loop. The module-free, alias-safe loader
+  uses eight bounded builtin-only Zsh option-snapshot children (nine through
+  the CLI wrapper). This clarifies the earlier zero-process load target;
+  process traces verify the distinction and cold timing includes their cost.
 - No growing retained state or descriptor count across 100 consecutive conversions, allowing the one-time immutable entity cache.
 
 These are provisional performance targets, not evidence or release claims. Milestone 0 establishes a baseline; milestone 5 measures the complete converter. Missing a target requires profiling and either an implementation improvement or an explicit recorded change to the supported performance envelope before declaring v1 complete. No correctness tradeoff or external runtime dependency may be introduced simply to meet a timing target.
@@ -621,18 +666,18 @@ Adopt the example's simple formatting conventions in v1: one blank line between 
 
 The implementation is complete only when all of the following are true:
 
-- [ ] The sourceable library and CLI implement the public interface and return documented statuses.
-- [ ] Production loading, reading, parsing, data loading, and rendering use pure Zsh builtins/code with no required native modules or external programs.
-- [ ] Supported HTML and all rendering fallbacks are documented and covered by reviewed fixtures.
-- [ ] Text order, semantic structure, code whitespace, destinations, numbering, and table cell data are preserved under the v1 contract.
-- [ ] All specified strict/tolerant recovery cases are tested; no undocumented repair behavior remains.
-- [ ] Input/output/tag/depth limits and encoding/control policies are enforced with no conversion stdout on pre-emission failure.
-- [ ] The library preserves caller state across loading, repeated use, and failures, and cleans up owned descriptors.
-- [ ] Parse checks and the mandatory offline suite pass on Zsh 5.9 and the development stable version.
-- [ ] Runtime-purity checks pass with external commands unavailable.
-- [ ] zoup interoperability is documented and contract-tested without requiring zoup to run standalone tests.
-- [ ] A reproducible benchmark and preservation report are committed, with performance targets met or explicitly revised with evidence.
-- [ ] Installation, usage, deviations, contributor instructions, licensing, and vendored data provenance are complete.
-- [ ] Planned usage examples work from an installed copy outside the repository cwd.
+- [x] The sourceable library and CLI implement the public interface and return documented statuses.
+- [x] Production loading, reading, parsing, data loading, and rendering use pure Zsh builtins/code with no required native modules or external programs.
+- [x] Supported HTML and all rendering fallbacks are documented and covered by reviewed fixtures.
+- [x] Text order, semantic structure, code whitespace, destinations, numbering, and table cell data are preserved under the v1 contract.
+- [x] All specified strict/tolerant recovery cases are tested; no undocumented repair behavior remains.
+- [x] Input/output/tag/depth limits and encoding/control policies are enforced with no conversion stdout on pre-emission failure.
+- [x] The library preserves caller state across loading, repeated use, and failures, and cleans up owned descriptors.
+- [x] Parse checks and the mandatory offline suite pass on Zsh 5.8 and the development stable version.
+- [x] Runtime-purity checks pass with external commands unavailable.
+- [x] zoup interoperability is documented and contract-tested without requiring zoup to run standalone tests.
+- [x] A reproducible benchmark and preservation report are committed, with performance targets met or explicitly revised with evidence.
+- [x] Installation, usage, deviations, contributor instructions, licensing, and vendored data provenance are complete.
+- [x] Planned usage examples work from an installed copy outside the repository cwd.
 
 The concrete final behavior is: a Zsh script can load `zhtml2md.zsh`, feed UTF-8 HTML from `zoup` or another source into `zhtml2md`, receive useful deterministic Markdown on stdout, distinguish failures by status, and continue with its original shell environment intact. The converter provides documented limits and fidelity instead of relying on an external implementation or claiming browser parity.

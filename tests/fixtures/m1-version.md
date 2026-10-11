@@ -1,1 +1,1 @@
-zhtml2md 0.1.0-dev
+zhtml2md 1.0.0-rc.1

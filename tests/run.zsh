@@ -4,7 +4,7 @@
 # Usage: zsh -df tests/run.zsh
 #
 # Written in Zsh so the core contract can be verified with Zsh alone.
-# The only external commands used are mkdir/rm for the scratch directory;
+# Filesystem setup and the mutation timeout use development utilities;
 # the library and CLI under test never require external commands.
 #
 # Fixture layout (tests/fixtures/NAME.*):
@@ -57,8 +57,7 @@ _zt_report() {  # name ok detail
 
 # --- 1. parse checks -------------------------------------------------------
 local -a sources=( "$root"/zhtml2md.zsh "$root"/lib/*.zsh(N) "$root"/bin/zhtml2md(N)
-                   "$root"/tests/run.zsh "$root"/tests/gen-fixtures.zsh "$root"/tests/gen-entity-fixtures.zsh
-                   "$root"/tests/gen-parser-fixtures.zsh "$root"/tests/parser/*.zsh(N)
+                   "$root"/tests/*.zsh(N) "$root"/tests/parser/*.zsh(N) "$root"/tests/mutations/*.zsh(N)
                    "$root"/tests/integration/*.zsh(N) "$root"/bench/*.zsh(N) )
 local f
 for f in "${sources[@]}"; do

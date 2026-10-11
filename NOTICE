@@ -1,0 +1,13 @@
+zhtml2md
+Project code is licensed under the Apache License, Version 2.0 (LICENSE).
+
+The named character reference data in data/entities.tsv is derived from
+WHATWG HTML Standard data at https://html.spec.whatwg.org/entities.json.
+Copyright © WHATWG (Apple, Google, Mozilla, Microsoft).
+The data was modified into a sorted tab-separated table of the 2,125
+semicolon-terminated names, storing one or two Unicode scalar values.
+Attribution, checksum and regeneration instructions are in data/README.md.
+The upstream license and warranty disclaimer are retained in
+data/LICENSE.WHATWG. The data is retained as data, under CC BY 4.0;
+WHATWG's source-code portions have the BSD 3-Clause licensing alternative
+stated in that upstream notice. This project claims no WHATWG endorsement.

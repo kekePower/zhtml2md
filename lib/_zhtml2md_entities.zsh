@@ -1,9 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
 # Named-reference data and one-pass character-reference decoding.
 # Sourced by the library; the tokenizer will call the decoder only in
-# eligible text/attribute contexts. The milestone 1 renderer still does
-# not interpret HTML. No data is read merely by sourcing this module.
-'builtin' 'typeset' _zhtml2md_entities_loadopt=${options[aliases]:-off}
+# eligible text/attribute contexts. No data is read merely by sourcing
+# this module.
+'builtin' 'typeset' _zhtml2md_entities_loadopt="$( 'builtin' 'set' '+o' )"
 'builtin' 'setopt' 'noaliases'
+if [[ $'\n'$_zhtml2md_entities_loadopt$'\n' == *$'\nset +o noaliases\n'* ||
+      $'\n'$_zhtml2md_entities_loadopt$'\n' == *$'\nset -o aliases\n'* ]]; then
+  _zhtml2md_entities_loadopt=on
+else
+  _zhtml2md_entities_loadopt=off
+fi
 
 # _zhtml2md_entity_number DIGITS BASE
 # Writes the caller-local integer _zhtml2md_number. All digits are checked
@@ -24,9 +31,8 @@ _zhtml2md_entity_number() {
     16) [[ $_digits == [0-9A-Fa-f]## ]] || return 1 ;;
     *) return 1 ;;
   esac
-  if [[ $_digits =~ '^0+' ]]; then
-    _digits=${_digits[MEND+1,-1]}
-  fi
+  [[ $_digits == (#b)(0#)(*) ]]
+  _digits=${match[2]}
   if (( ${#_digits} > 7 || (_base == 16 && ${#_digits} > 6) )); then
     _zhtml2md_number=1114112
     return 0
@@ -161,7 +167,7 @@ _zhtml2md_entities_init() {
 # Fragments join once, with the capture limit charged before append.
 # Status: 0 success, 1 initialization, 3 decoded control, 4 capture limit.
 _zhtml2md_decode_entities() {
-  emulate -L zsh -o no_multibyte
+  emulate -L zsh -o no_multibyte -o extended_glob
   local LC_ALL=C
   local _text=$1 _part _ref _digits _value _zhtml2md_scalar=''
   local MATCH
@@ -191,9 +197,9 @@ _zhtml2md_decode_entities() {
     _part=${_parts[_i]}
     _used=0
     _value='&'
-    # Constant regex; input is never a pattern, expression, or name.
-    if [[ $_part =~ '^([A-Za-z][A-Za-z0-9]{0,30}|#[0-9]+|#[xX][0-9A-Fa-f]+);' ]]; then
-      _ref=$MATCH
+    # Constant native pattern; input is never executable pattern text.
+    if [[ $_part == (#b)(([A-Za-z][A-Za-z0-9](#c0,30)|\#[0-9]##|\#[xX][0-9A-Fa-f]##)\;)* ]]; then
+      _ref=${match[1]}
       if [[ $_ref == '#'* ]]; then
         if [[ $_ref == '#x'* || $_ref == '#X'* ]]; then
           _digits=${_ref[3,-2]}

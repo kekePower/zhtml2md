@@ -1,6 +1,6 @@
 # zhtml2md
 
-Pure Zsh 5.9+ conversion of UTF-8 HTML into compact, deterministic
+Pure Zsh 5.8+ conversion of UTF-8 HTML into compact, deterministic
 Markdown for AI-agent workflows. No external commands, parsers, codecs,
 or `zmodload` modules are used at load time or at conversion time.
 
@@ -19,13 +19,12 @@ In the preferred pipeline, `zoup` selects and cleans content and
 `zhtml2md` converts the retained semantic HTML; the converter also works
 standalone for its documented HTML subset.
 
-Status: early implementation. Milestones 0-1 (runtime mechanics,
-library/CLI, I/O contract, encoding validation) are complete and
-verified. Milestones 2-3 connect the tokenizer, entity decoder, and iterative
-recovery to Markdown rendering for prose, headings, emphasis, links, images,
-code, and textual form/definition fallbacks. Nested list numbering and table
-rendering remain milestone 4; this is not a complete v1 release. The
-contract is [docs/implementation-plan.md](docs/implementation-plan.md).
+Version **1.0.0-rc.1** is a locally verified v1 candidate. Milestones 0–6
+implement the supported HTML contract, hardening, zoup integration coverage,
+full-conversion benchmarks, notices and release checks. The offline suite runs
+on actual Zsh 5.8 and 5.9.2 binaries on Linux. See the
+[acceptance review](docs/release-readiness.md) and
+[implementation contract](docs/implementation-plan.md).
 
 ## Documentation
 
@@ -34,8 +33,8 @@ contract is [docs/implementation-plan.md](docs/implementation-plan.md).
   deviations
 - [docs/development.md](docs/development.md) - verified shell mechanics
   and contributor rules
-- [docs/benchmarks.md](docs/benchmarks.md) - parser-only measurements;
-  complete conversion report pending
+- [docs/benchmarks.md](docs/benchmarks.md) - full conversion timings, peak memory, tokens and preservation
+- [docs/zoup-integration.md](docs/zoup-integration.md) - optional cleaner API and tested upstream contract
 - [docs/implementation-plan.md](docs/implementation-plan.md) - the v1
   contract
 
@@ -43,5 +42,15 @@ contract is [docs/implementation-plan.md](docs/implementation-plan.md).
 
 ```zsh
 zsh -df tests/run.zsh     # offline fixture + integration suite
-zsh -df bench/run.zsh     # benchmark skeleton
+zsh -df bench/run.zsh 20  # full offline benchmark; can take over 30 minutes
 ```
+
+Optional checks and contribution instructions are in
+[CONTRIBUTING.md](CONTRIBUTING.md). The real zoup check is optional; the
+standalone suite never requires its installation.
+
+## License
+
+Project code: [Apache-2.0](LICENSE). Vendored WHATWG entity data has its
+upstream notices in [data/README.md](data/README.md),
+[data/LICENSE.WHATWG](data/LICENSE.WHATWG) and [NOTICE](NOTICE).

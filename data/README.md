@@ -10,7 +10,9 @@
   `d741d877ac77c4194c4ad526b5b4a19aef8dfe411ab840a466891cdbb9f362e6`
 - Upstream license: the WHATWG HTML Standard is licensed under CC BY 4.0
   (https://html.spec.whatwg.org/#ipr and the LICENSE header of the
-  standard). Attribution: "HTML Standard, Web Hypertext Application
+  standard). The full upstream notice is retained in
+  `data/LICENSE.WHATWG` (CC BY 4.0 for the data; BSD 3-Clause for portions
+  incorporated into source code). See also the project NOTICE. Attribution: "HTML Standard, Web Hypertext Application
   Technology Working Group (WHATWG), https://html.spec.whatwg.org/".
 
 ## Contents
@@ -38,8 +40,8 @@ The loader and decoder are now implemented in `lib/_zhtml2md_entities.zsh`.
 They initialize the cache lazily, validate all rows before publishing it,
 and close the owned descriptor on success and failure. Component fixtures
 cover every named value independently. The component parser now chooses
-eligible text/attribute contexts. The public literal-text slice does not
-yet invoke the parser; milestone 3 connects the Markdown renderer.
+eligible text/attribute contexts. The public renderer consumes decoded
+parser events; references are expanded once before context-specific escaping.
 
 ## Regeneration
 

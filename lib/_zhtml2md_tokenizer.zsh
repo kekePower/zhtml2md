@@ -1,8 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
 # Stateful byte tokenizer. The parser declares the namespaced context;
 # tokens are parameters, never serialized shell code. Source offsets are
 # zero-based, with exclusive ends, in the original input including BOM.
-'builtin' 'typeset' _zhtml2md_tokenizer_loadopt=${options[aliases]:-off}
+'builtin' 'typeset' _zhtml2md_tokenizer_loadopt="$( 'builtin' 'set' '+o' )"
 'builtin' 'setopt' 'noaliases'
+if [[ $'\n'$_zhtml2md_tokenizer_loadopt$'\n' == *$'\nset +o noaliases\n'* ||
+      $'\n'$_zhtml2md_tokenizer_loadopt$'\n' == *$'\nset -o aliases\n'* ]]; then
+  _zhtml2md_tokenizer_loadopt=on
+else
+  _zhtml2md_tokenizer_loadopt=off
+fi
 
 # Initialize the '<' index once using C-level splitting. Subsequent
 # seeks advance a cursor through these offsets; no repeated whole-tail

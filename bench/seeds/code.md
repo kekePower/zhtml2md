@@ -1,0 +1,82 @@
+```zsh
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+print -r -- "hello"
+	# keep  two spaces  
+```

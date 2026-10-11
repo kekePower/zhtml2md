@@ -120,7 +120,7 @@ usage: zhtml2md [--strict] [--] [FILE|-]
 " > "$dir/m1-usage-help-strict.stderr"
 
 _zf_write m1-help '' "$help_text" 0 '--help' '' '' noinput
-_zf_write m1-version '' $'zhtml2md 0.1.0-dev\n' 0 '--version' '' '' noinput
+_zf_write m1-version '' $'zhtml2md 1.0.0-rc.1\n' 0 '--version' '' '' noinput
 _zf_write m1-dashdash $'dash text\n' $'dash text\n' 0 '--' '' ''
 
 # --- Markdown prose/inline/code (milestone 3), hand-authored bytes -------

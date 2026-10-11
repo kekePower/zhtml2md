@@ -1,0 +1,9 @@
+# Keep byte-exact input/oracle data intact, including CRLF and trailing spaces.
+tests/fixtures/* -text -whitespace
+tests/parser/*.html -text -whitespace
+tests/entities/*.html -text -whitespace
+tests/entities/*.md -text -whitespace
+tests/contracts/*.html -text -whitespace
+tests/contracts/*.md -text -whitespace
+bench/seeds/*.html -text -whitespace
+bench/seeds/*.md -text -whitespace

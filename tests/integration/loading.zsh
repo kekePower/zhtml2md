@@ -58,7 +58,7 @@ _zl_main() {
   [[ -z $_load_err ]]; _zl_check 'load produces no stderr' $?
 
   _zl_snap
-  [[ $_zl_state == $_before ]]
+  [[ $_zl_state == "$_before" ]]
   _zl_check 'caller state preserved across load' $?
 
   # New global parameters must be library-owned and namespaced.
@@ -102,12 +102,21 @@ _zl_main() {
   _out2=$( 'zhtml2md' -- "$ZHTML2MD_ROOT/tests/fixtures/m1-plain-text.html" 2>/dev/null )
   [[ $_out1 == "$_out2" ]]; _zl_check 'repeated conversion deterministic' $?
 
+  _out1=$( 'zhtml2md' --strict -- "$ZHTML2MD_ROOT/tests/fixtures/m4-table-strict.html" 2>/dev/null )
+  (( $? == 0 )); _zl_check 'table rendering under hostile aliases succeeds' $?
+  [[ $_out1 == $'| A | B |\n| --- | --- |\n| C | D |' ]]
+  _zl_check 'table bytes under hostile aliases' $?
+  _out1=$( 'zhtml2md' --strict -- "$ZHTML2MD_ROOT/tests/fixtures/m4-reverse-strict.html" 2>/dev/null )
+  (( $? == 0 )); _zl_check 'list rendering under hostile aliases succeeds' $?
+  [[ $_out1 == $'- 3\\. A\n- 2\\. B\n- 1\\. C' ]]
+  _zl_check 'list bytes under hostile aliases' $?
+
   # Failing call must also preserve state.
   'zhtml2md' -- "$ZHTML2MD_ROOT/tests/fixtures/m1-reject-nul.html" >/dev/null 2>/dev/null
   (( $? == 3 )); _zl_check 'rejected input returns 3' $?
 
   _zl_snap
-  [[ $_zl_state == $_before ]]
+  [[ $_zl_state == "$_before" ]]
   _zl_check 'caller state preserved across calls' $?
 
   # --- descriptor stability across repeated conversions ---
@@ -148,6 +157,16 @@ alias _zhtml2md_render_event='echo HIJACKED-renderer; true'
 alias _zhtml2md_r_append='echo HIJACKED-fragment; true'
 alias _zhtml2md_r_prose='echo HIJACKED-prose; true'
 alias _zhtml2md_r_close='echo HIJACKED-close; true'
+alias _zhtml2md_r_structure_open='echo HIJACKED-structure; true'
+alias _zhtml2md_r_structure_close='echo HIJACKED-structure; true'
+alias _zhtml2md_r_table_emit='echo HIJACKED-table; true'
+alias _zhtml2md_r_list_emit='echo HIJACKED-list; true'
+alias _zhtml2md_r_record_add='echo HIJACKED-record; true'
+alias _zhtml2md_r_indent='echo HIJACKED-indent; true'
+alias test='echo HIJACKED-test; true'
+alias set='echo HIJACKED-set; set'
+alias setopt='echo HIJACKED-setopt; setopt'
+alias '[['='echo HIJACKED-condition'
 alias read='echo HIJACKED-read; read'
 alias exec='echo HIJACKED-exec; exec'
 alias unset='echo HIJACKED-unset; unset'

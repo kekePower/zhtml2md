@@ -82,6 +82,66 @@ _zr_convert() { # HTML expected status [strict]
   _zr_convert '****' '' 4 strict
 }
 
+# Deferred list/table records share the capture budget with live text.
+() {
+  local -i _ZHTML2MD_LIMIT_CAPTURE=6
+  _zr_convert '<ul><li>abc</li><li>def</li></ul>' $'- abc\n- def\n' 0 strict
+  _zr_convert '<table><tr><td>abc</td><td>def</td></tr></table>' $'|  |  |\n| --- | --- |\n| abc | def |\n' 0 strict
+}
+() {
+  local -i _ZHTML2MD_LIMIT_CAPTURE=5
+  _zr_convert '<ul><li>abc</li><li>def</li></ul>' '' 4 strict
+  _zr_convert '<table><tr><td>abc</td><td>def</td></tr></table>' '' 4 strict
+  _zr_convert '<ul><li><ul><li>abc</li></ul></li></ul>' $'- - abc\n' 0 strict
+}
+() {
+  local -i _ZHTML2MD_LIMIT_OUTPUT=7
+  _zr_convert '<ul><li>abcd</li></ul>' $'- abcd\n' 0 strict
+}
+() {
+  local -i _ZHTML2MD_LIMIT_OUTPUT=6
+  _zr_convert '<ul><li>abcd</li></ul>' '' 4 strict
+}
+# Immediate pre newlines use the tokenizer's source index, including tags
+# crossing quoted '<' segments, UTF-8 attributes and growing tag windows.
+_zr_convert $'<pre title="<one><two>">\r\nx\n</pre>' $'```\nx\n```\n' 0 strict
+_zr_convert $'<pre title="é😀<x>"><code>\nx\n</code></pre>' $'```\n\nx\n```\n' 0 strict
+_zr_convert $'<pre title="<x>">\n\nx\n</pre>' $'```\n\nx\n```\n' 0 strict
+local _zr_pre_attr
+builtin printf -v _zr_pre_attr '%1024s' ''
+_zr_convert '<pre title="'"$_zr_pre_attr"$'<x>">\nx\n</pre>' $'```\nx\n```\n' 0 strict
+_zr_convert '<pre title="<x>"></pre>' $'```\n```\n' 0 strict
+_zr_convert '<pre>' $'```\n```\n' 0
+_zr_convert $'<pre title="<x>">\n' $'```\n```\n' 0
+_zr_convert '<pre>' '' 3 strict
+
+# 128 nested list/item pairs occupy all 256 semantic frames. Payload
+# moves outward once; only the current rendered item is charged.
+local _zr_nested='' _zr_markers
+for (( _zr_i=0; _zr_i<128; ++_zr_i )); do _zr_nested+='<ul><li>'; done
+_zr_nested+=x
+for (( _zr_i=0; _zr_i<128; ++_zr_i )); do _zr_nested+='</li></ul>'; done
+builtin printf -v _zr_markers '%128s' ''
+_zr_markers=${_zr_markers// /'- '}
+() {
+  local -i _ZHTML2MD_LIMIT_CAPTURE=255
+  _zr_convert "$_zr_nested" "$_zr_markers"$'x\n' 0 strict
+}
+() {
+  local -i _ZHTML2MD_LIMIT_CAPTURE=254
+  _zr_convert "$_zr_nested" '' 4 strict
+}
+_zr_convert "<ul><li>$_zr_nested</li></ul>" '' 4 strict
+
+# Window boundaries must not change inline-code pipe escaping.
+local _zr_seam _zr_pipe_expected
+for _zr_i in 4094 4095 4096 4097; do
+  builtin printf -v _zr_seam '%*s' $_zr_i ''
+  _zr_seam=${_zr_seam// /x}
+  _zr_pipe_expected=$'|  |\n| --- |\n| `a'$_zr_seam$'\\|b` |\n'
+  _zr_convert "<table><tr><td><code>a$_zr_seam|b</code></td></tr></table>" "$_zr_pipe_expected" 0 strict
+done
+
 # Exercise the actual 16 MiB counters independently of the 4 MiB input
 # cap. A fragment at the limit fits; a further byte fails with no stdout.
 () {
@@ -146,9 +206,9 @@ done
 # Recovery may not escape a discard boundary and leak hidden content.
 _zr_convert '<p>A<template></p>X</template>B</p>' $'AB\n' 0
 _zr_convert '<p>A<template></p>X</template>B</p>' '' 3 strict
-_zr_convert '<ul><li>A<template><ul><li>X</li></ul></template>B</li></ul>' $'AB\n' 0 strict
-_zr_convert '<ul><li>A<template><li>X</li></template>B</li></ul>' $'AB\n' 0
-_zr_convert '<table><tr><td>A<template><td>X</td></template>B</td></tr></table>' $'AB\n' 0 strict
+_zr_convert '<ul><li>A<template><ul><li>X</li></ul></template>B</li></ul>' $'- AB\n' 0 strict
+_zr_convert '<ul><li>A<template><li>X</li></template>B</li></ul>' $'- AB\n' 0
+_zr_convert '<table><tr><td>A<template><td>X</td></template>B</td></tr></table>' $'|  |\n| --- |\n| AB |\n' 0 strict
 _zr_convert '<div>A<template><table><tr><td>X</td></tr></table></template>B</div>' $'AB\n' 0 strict
 _zr_convert '<p>A<template>hidden<p>more' $'A\n' 0
 _zr_convert '<p>A<template>hidden<p>more' '' 3 strict
@@ -220,6 +280,19 @@ _zr_check 'full conversion with empty PATH' $?
 _zr_read "$_zr_tmp/out"
 [[ $_zr_readback == $'# A\n\n[\\&](./x)\n\n```zsh\nprint x\n```\n' && ! -s $_zr_tmp/err ]]
 _zr_check 'empty PATH full Markdown bytes' $?
+
+# The M4 acceptance fixture also runs cold with no command lookup.
+PATH=$_zr_tmp "${ZHTML2MD_TEST_ZSH}" -df -c '
+  builtin cd / || exit 1
+  module_path=( /nonexistent-zhtml2md-modules )
+  source "$1" || exit 1
+  zhtml2md --strict -- "$2" || exit 1
+' zsh "$_zr_root/zhtml2md.zsh" "$_zr_root/tests/fixtures/m4-acceptance-strict.html" > "$_zr_tmp/out" 2> "$_zr_tmp/err"
+_zr_check 'structures with empty PATH and module path' $?
+_zr_read "$_zr_tmp/out"; _zr_out=$_zr_readback
+_zr_read "$_zr_root/tests/fixtures/m4-acceptance-strict.md"
+[[ $_zr_out == "$_zr_readback" && ! -s $_zr_tmp/err ]]
+_zr_check 'empty PATH structural bytes' $?
 
 builtin print -r -- "rendering: $_zr_checks assertions, $_zr_fails failures"
 (( _zr_fails == 0 ))

@@ -1,0 +1,192 @@
+{
+  "tokenizer": "tiktoken 0.11.0 / cl100k_base",
+  "contracts": [
+    {
+      "case": "article",
+      "source_bytes": 166,
+      "cleaned_bytes": 98,
+      "markdown_bytes": 57,
+      "source_tokens": 50,
+      "cleaned_tokens": 32,
+      "markdown_tokens": 15
+    },
+    {
+      "case": "boundaries",
+      "source_bytes": 126,
+      "cleaned_bytes": 129,
+      "markdown_bytes": 33,
+      "source_tokens": 46,
+      "cleaned_tokens": 47,
+      "markdown_tokens": 15
+    },
+    {
+      "case": "code",
+      "source_bytes": 97,
+      "cleaned_bytes": 76,
+      "markdown_bytes": 41,
+      "source_tokens": 34,
+      "cleaned_tokens": 29,
+      "markdown_tokens": 17
+    },
+    {
+      "case": "lists",
+      "source_bytes": 130,
+      "cleaned_bytes": 123,
+      "markdown_bytes": 46,
+      "source_tokens": 48,
+      "cleaned_tokens": 45,
+      "markdown_tokens": 19
+    },
+    {
+      "case": "tables",
+      "source_bytes": 157,
+      "cleaned_bytes": 144,
+      "markdown_bytes": 137,
+      "source_tokens": 52,
+      "cleaned_tokens": 49,
+      "markdown_tokens": 54
+    }
+  ],
+  "corpus": [
+    {
+      "case": "code-10240.html",
+      "html_tokens": 2883,
+      "markdown_tokens": 2830
+    },
+    {
+      "case": "discard-10240.html",
+      "html_tokens": 1660,
+      "markdown_tokens": 6
+    },
+    {
+      "case": "entities-10240.html",
+      "html_tokens": 1526,
+      "markdown_tokens": 1374
+    },
+    {
+      "case": "nested-10240.html",
+      "html_tokens": 1710,
+      "markdown_tokens": 1644
+    },
+    {
+      "case": "prose-10240.html",
+      "html_tokens": 1694,
+      "markdown_tokens": 1636
+    },
+    {
+      "case": "short-tags-10240.html",
+      "html_tokens": 1806,
+      "markdown_tokens": 1302
+    },
+    {
+      "case": "tables-10240.html",
+      "html_tokens": 1764,
+      "markdown_tokens": 1668
+    },
+    {
+      "case": "code-102400.html",
+      "html_tokens": 33872,
+      "markdown_tokens": 33394
+    },
+    {
+      "case": "discard-102400.html",
+      "html_tokens": 17381,
+      "markdown_tokens": 63
+    },
+    {
+      "case": "entities-102400.html",
+      "html_tokens": 19586,
+      "markdown_tokens": 17862
+    },
+    {
+      "case": "nested-102400.html",
+      "html_tokens": 17895,
+      "markdown_tokens": 17262
+    },
+    {
+      "case": "prose-102400.html",
+      "html_tokens": 17734,
+      "markdown_tokens": 17178
+    },
+    {
+      "case": "short-tags-102400.html",
+      "html_tokens": 20350,
+      "markdown_tokens": 14756
+    },
+    {
+      "case": "tables-102400.html",
+      "html_tokens": 18049,
+      "markdown_tokens": 17097
+    },
+    {
+      "case": "code-1048576.html",
+      "html_tokens": 348431,
+      "markdown_tokens": 343562
+    },
+    {
+      "case": "discard-1048576.html",
+      "html_tokens": 180316,
+      "markdown_tokens": 654
+    },
+    {
+      "case": "entities-1048576.html",
+      "html_tokens": 201825,
+      "markdown_tokens": 184116
+    },
+    {
+      "case": "nested-1048576.html",
+      "html_tokens": 183190,
+      "markdown_tokens": 176730
+    },
+    {
+      "case": "prose-1048576.html",
+      "html_tokens": 183166,
+      "markdown_tokens": 177506
+    },
+    {
+      "case": "short-tags-1048576.html",
+      "html_tokens": 212309,
+      "markdown_tokens": 154070
+    },
+    {
+      "case": "tables-1048576.html",
+      "html_tokens": 186564,
+      "markdown_tokens": 176808
+    },
+    {
+      "case": "code-4194304.html",
+      "html_tokens": 1395401,
+      "markdown_tokens": 1375946
+    },
+    {
+      "case": "discard-4194304.html",
+      "html_tokens": 723629,
+      "markdown_tokens": 2625
+    },
+    {
+      "case": "entities-4194304.html",
+      "html_tokens": 808742,
+      "markdown_tokens": 737838
+    },
+    {
+      "case": "nested-4194304.html",
+      "html_tokens": 733163,
+      "markdown_tokens": 707331
+    },
+    {
+      "case": "prose-4194304.html",
+      "html_tokens": 733871,
+      "markdown_tokens": 711251
+    },
+    {
+      "case": "short-tags-4194304.html",
+      "html_tokens": 850960,
+      "markdown_tokens": 617582
+    },
+    {
+      "case": "tables-4194304.html",
+      "html_tokens": 746254,
+      "markdown_tokens": 707232
+    }
+  ]
+}

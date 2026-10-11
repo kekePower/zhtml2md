@@ -1,11 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
 # lib/_zhtml2md_render.zsh - diagnostics, bounded output, rendering.
 #
 # Sourced by zhtml2md.zsh. See that file for the load-time guard
 # rationale.
 
 
-'builtin' 'typeset' _zhtml2md_render_loadopt=${options[aliases]:-off}
+'builtin' 'typeset' _zhtml2md_render_loadopt="$( 'builtin' 'set' '+o' )"
 'builtin' 'setopt' 'noaliases'
+if [[ $'\n'$_zhtml2md_render_loadopt$'\n' == *$'\nset +o noaliases\n'* ||
+      $'\n'$_zhtml2md_render_loadopt$'\n' == *$'\nset -o aliases\n'* ]]; then
+  _zhtml2md_render_loadopt=on
+else
+  _zhtml2md_render_loadopt=off
+fi
 
 # ---------------------------------------------------------------------------
 # Diagnostics

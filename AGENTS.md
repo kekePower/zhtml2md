@@ -2,7 +2,7 @@
 
 **`zhtml2md` is a pure Zsh project.** It converts UTF-8 HTML into compact, deterministic Markdown for AI agents. The deliverable is a sourceable Zsh library with a small CLI wrapper around the same converter.
 
-- **Use native Zsh 5.9+ semantics.** Linux is the initial supported platform. Bash/POSIX-shell compatibility is not a goal.
+- **Use native Zsh 5.8+ semantics.** Linux is the initial supported platform. Bash/POSIX-shell compatibility is not a goal.
 - **Keep the runtime 100% pure Zsh.** Loading, input handling, parsing, rendering, and static-data loading must use Zsh code and builtins. No external commands, parsers, codecs, compiled helpers, or required `zmodload` modules. External development tools are allowed; they must not become runtime dependencies.
 - **Preserve meaning before minimizing size.** Keep text order, headings, lists, links and destinations, image descriptions, code whitespace, and table data. Token savings must be measured, not assumed from byte counts.
 - **Respect the boundary with `zoup`.** `zoup` selects and cleans content; `zhtml2md` converts the retained semantic HTML. The converter must also work independently for its documented HTML subset. Fetching, article extraction, CSS analysis, and JavaScript execution are outside this project's scope.

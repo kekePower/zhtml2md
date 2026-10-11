@@ -1,0 +1,47 @@
+name: Verify Zsh runtime
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - zsh: '5.8'
+            archive: https://www.zsh.org/pub/old/zsh-5.8.tar.xz
+            sha256: dcc4b54cc5565670a65581760261c163d720991f0d06486da61f8d839b52de27
+          - zsh: '5.9.2'
+            archive: https://www.zsh.org/pub/zsh-5.9.2.tar.xz
+            sha256: 36fa734374b44783582cec09bcd67822e2f992c779ec1624ab5596df078d2f81
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Build selected upstream Zsh
+        env:
+          ZSH_VERSION_TO_BUILD: ${{ matrix.zsh }}
+          ZSH_ARCHIVE_URL: ${{ matrix.archive }}
+          ZSH_ARCHIVE_SHA: ${{ matrix.sha256 }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libncurses-dev curl python3-venv strace
+          curl --fail --location --retry 3 "$ZSH_ARCHIVE_URL" -o "$RUNNER_TEMP/zsh.tar.xz"
+          printf '%s  %s\n' "$ZSH_ARCHIVE_SHA" "$RUNNER_TEMP/zsh.tar.xz" | sha256sum --check
+          tar -xJf "$RUNNER_TEMP/zsh.tar.xz" -C "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP/zsh-$ZSH_VERSION_TO_BUILD"
+          ./configure --disable-dynamic --disable-gdbm --with-tcsetpgrp \
+            CFLAGS='-O2 -std=gnu89 -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error=implicit-int'
+          make -j2
+          printf 'ZHTML2MD_TEST_ZSH=%s\n' "$PWD/Src/zsh" >> "$GITHUB_ENV"
+      - name: Mandatory offline suite
+        run: '"$ZHTML2MD_TEST_ZSH" -df tests/run.zsh'
+      - name: Independent Markdown and runtime audit
+        run: |
+          python3 -m venv "$RUNNER_TEMP/markdown-verify"
+          "$RUNNER_TEMP/markdown-verify/bin/pip" install markdown-it-py==3.0.0
+          "$RUNNER_TEMP/markdown-verify/bin/python" tools/check-markdown
+          "$RUNNER_TEMP/markdown-verify/bin/python" tools/audit-runtime --zsh "$ZHTML2MD_TEST_ZSH"

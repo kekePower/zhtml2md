@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # zhtml2md.zsh - sourceable entry point for the zhtml2md library.
 #
 # Loads the implementation modules, defines the public `zhtml2md`
@@ -11,8 +12,14 @@
 # scope to restore into when this file is sourced at top level.
 
 
-'builtin' 'typeset' _zhtml2md_loadopt_aliases=${options[aliases]:-off}
+'builtin' 'typeset' _zhtml2md_loadopt_aliases="$( 'builtin' 'set' '+o' )"
 'builtin' 'setopt' 'noaliases'
+if [[ $'\n'$_zhtml2md_loadopt_aliases$'\n' == *$'\nset +o noaliases\n'* ||
+      $'\n'$_zhtml2md_loadopt_aliases$'\n' == *$'\nset -o aliases\n'* ]]; then
+  _zhtml2md_loadopt_aliases=on
+else
+  _zhtml2md_loadopt_aliases=off
+fi
 
 # Absolute directory containing this file, resolved at load time so
 # sibling code and data are located relative to the library, never the
@@ -22,7 +29,7 @@
 # Versioned constants (milestone 0 deliverable). Guarded so repeated
 # sourcing does not attempt to reassign read-only parameters.
 if (( ! ${+_ZHTML2MD_VERSION} )); then
-  'builtin' 'typeset' -gr  _ZHTML2MD_VERSION='0.1.0-dev'
+  'builtin' 'typeset' -gr  _ZHTML2MD_VERSION='1.0.0-rc.1'
   'builtin' 'typeset' -gir _ZHTML2MD_LIMIT_INPUT=4194304    # 4 MiB
   'builtin' 'typeset' -gir _ZHTML2MD_LIMIT_TAG=65536        # 64 KiB
   'builtin' 'typeset' -gir _ZHTML2MD_LIMIT_DEPTH=256
@@ -43,6 +50,7 @@ fi
   'builtin' 'source' -- "$_ZHTML2MD_DIR/lib/_zhtml2md_input.zsh"  &&
   'builtin' 'source' -- "$_ZHTML2MD_DIR/lib/_zhtml2md_render.zsh" &&
   'builtin' 'source' -- "$_ZHTML2MD_DIR/lib/_zhtml2md_markdown.zsh" &&
+  'builtin' 'source' -- "$_ZHTML2MD_DIR/lib/_zhtml2md_structures.zsh" &&
   'builtin' 'source' -- "$_ZHTML2MD_DIR/lib/_zhtml2md_entities.zsh" &&
   'builtin' 'source' -- "$_ZHTML2MD_DIR/lib/_zhtml2md_tokenizer.zsh" &&
   'builtin' 'source' -- "$_ZHTML2MD_DIR/lib/_zhtml2md_frames.zsh"

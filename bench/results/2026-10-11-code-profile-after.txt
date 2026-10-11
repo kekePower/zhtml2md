@@ -1,0 +1,39 @@
+Development zsh/zprof profile, first strict conversion, Zsh 5.9.2.
+Input: bench/generated/code-4194304.html
+SHA256: 75b06f58afc58a339f2d809c245d4ac5f62922d79b774b433ba4c7d3185f2b27
+Revision: after source-index pre-newline optimization.
+Instrumented timings are not benchmark samples.
+
+num  calls                time                       self            name
+-----------------------------------------------------------------------------------
+ 1) 2431        1065.81     0.44   19.72%   1065.81     0.44   19.72%  _zhtml2md_r_ticks
+ 2) 7293         527.86     0.07    9.77%    527.86     0.07    9.77%  _zhtml2md_r_normalize
+ 3) 9724         735.93     0.08   13.61%    461.85     0.05    8.54%  _zhtml2md_lex_tag
+ 4) 12157        1178.51     0.10   21.80%    442.58     0.04    8.19%  _zhtml2md_lex_next
+ 5) 9724         274.08     0.03    5.07%    274.08     0.03    5.07%  _zhtml2md_lex_tag_grow
+ 6) 12156        2864.33     0.24   52.99%    265.54     0.02    4.91%  _zhtml2md_render_event
+ 7) 7293         243.68     0.03    4.51%    243.68     0.03    4.51%  _zhtml2md_r_append
+ 8)    1        5078.70  5078.70   93.95%    237.63   237.63    4.40%  _zhtml2md_parse
+ 9) 2431        2283.11     0.94   42.24%    235.57     0.10    4.36%  _zhtml2md_r_close
+10)    1         204.30   204.30    3.78%    204.30   204.30    3.78%  _zhtml2md_validate_encoding
+11) 4862         714.53     0.15   13.22%    157.32     0.03    2.91%  _zhtml2md_frame_start
+12) 2431        1441.77     0.59   26.67%    140.23     0.06    2.59%  _zhtml2md_r_code
+13) 12156        2993.99     0.25   55.39%    129.65     0.01    2.40%  _zhtml2md_parse_event
+14)    1         128.20   128.20    2.37%    128.20   128.20    2.37%  _zhtml2md_lex_init
+15) 2432         120.49     0.05    2.23%    120.49     0.05    2.23%  _zhtml2md_r_take
+16) 4862        2646.17     0.54   48.95%    107.52     0.02    1.99%  _zhtml2md_frame_end
+17) 4862        2507.75     0.52   46.39%     93.92     0.02    1.74%  _zhtml2md_frame_pop
+18) 2431          88.55     0.04    1.64%     88.55     0.04    1.64%  _zhtml2md_r_push
+19) 4862         492.64     0.10    9.11%     86.13     0.02    1.59%  _zhtml2md_frame_push
+20) 7293          84.10     0.01    1.56%     84.10     0.01    1.56%  _zhtml2md_r_boundary
+21) 2431         233.06     0.10    4.31%     79.96     0.03    1.48%  _zhtml2md_r_inline
+22) 9724          62.44     0.01    1.16%     62.44     0.01    1.16%  _zhtml2md_is_void
+23) 2431         109.91     0.05    2.03%     57.59     0.02    1.07%  _zhtml2md_r_language
+24)    1          47.94    47.94    0.89%     47.94    47.94    0.89%  _zhtml2md_read_all
+25) 4862          33.04     0.01    0.61%     33.04     0.01    0.61%  _zhtml2md_breaks_p
+26)    1          18.96    18.96    0.35%     18.96    18.96    0.35%  _zhtml2md_emit
+27)    1        5132.24  5132.24   94.95%      8.45     8.45    0.16%  _zhtml2md_markdown
+28)    1        5405.47  5405.47  100.00%      1.93     1.93    0.04%  zhtml2md
+29)    1        5132.33  5132.33   94.95%      0.09     0.09    0.00%  _zhtml2md_render
+30)    1           0.03     0.03    0.00%      0.03     0.03    0.00%  _zhtml2md_r_prose
+31)    1           0.01     0.01    0.00%      0.01     0.01    0.00%  _zhtml2md_diag_finish
